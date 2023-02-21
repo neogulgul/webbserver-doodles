@@ -1,0 +1,107 @@
+@font-face {
+	font-family: "Inter";
+	src: url(./assets/fonts/Inter-Regular.ttf);
+}
+
+:root {
+	--background: #eeeeee;
+	--background-alt: #ffffff;
+	--foreground: #000000;
+	--shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+}
+
+* {
+	position: relative;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: "Inter";
+	font-size: 15px;
+	font-weight: normal;
+	line-height: 125%;
+	color: var(--foreground);
+}
+
+html, body {
+	height: 100%;
+}
+
+body {
+	background-color: var(--background);
+}
+
+#site-wrapper {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+	overflow-x: hidden;
+}
+
+canvas {
+	width: 95vmin;
+	height: 95vmin;
+	border-radius: 10px;
+	box-shadow: var(--shadow);
+	background-color: var(--background-alt);
+}
+
+#current-color {
+	position: absolute;
+	top: 15px;
+	left: 15px;
+	width: 50px;
+	height: 50px;
+	border: 2px solid rgba(0, 0, 0, 0.1);
+	border-radius: 10px;
+}
+
+.color {
+	border: 2px solid rgba(0, 0, 0, 0.1);
+	border-radius: 10px;
+}
+
+.info {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	transform: translate(7.5px, -50%);
+	z-index: 10;
+	width: max-content;
+	padding: 5px;
+	border-radius: 5px;
+	box-shadow: var(--shadow);
+	background-color: var(--background-alt);
+	opacity: 0;
+	transition: 0.3s;
+	text-transform: capitalize;
+	pointer-events: none;
+}
+
+.color:hover .info {
+	opacity: 1;
+}
+
+#color-palette {
+	--gap: 15px;
+	--width: 100px;
+	position: absolute;
+	left: var(--gap);
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap);
+	width: var(--width);
+	padding: var(--gap);
+	border-radius: 10px;
+	box-shadow: var(--shadow);
+	box-sizing: content-box;
+	background-color: var(--background-alt);
+}
+
+#color-palette .color {
+	--size: calc((var(--width) - var(--gap)) / 2);
+	width: var(--size);
+	height: var(--size);
+	cursor: pointer;
+}
