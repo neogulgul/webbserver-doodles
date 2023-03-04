@@ -1,6 +1,6 @@
 @font-face {
 	font-family: "Inter";
-	src: url(./assets/fonts/Inter-Regular.ttf);
+	src: url(../assets/fonts/Inter-Regular.ttf);
 }
 
 :root {
@@ -8,6 +8,7 @@
 	--background:     #eeeeee;
 	--background-alt: #ffffff;
 	--foreground:     #000000;
+	--selection:      #7df9ff;
 
 	/* other */
 	--ui-spacing: 15px;
@@ -50,6 +51,14 @@ body {
 	background-color: var(--background-alt);
 }
 
+.selected {
+	outline: 2px solid var(--selection);
+}
+
+/* ==================================================
+	canvas
+================================================== */
+
 #canvas {
 	--size: calc(100vmin - var(--ui-spacing) * 2);
 	width: var(--size);
@@ -68,10 +77,9 @@ body {
 	pointer-events: none;
 }
 
-.color {
-	border: 2px solid rgba(0, 0, 0, 0.1);
-	border-radius: var(--ui-border-radius);
-}
+/* ==================================================
+	color-palette
+================================================== */
 
 #color-palette {
 	--width: 100px;
@@ -85,36 +93,40 @@ body {
 	box-sizing: content-box;
 }
 
-#color-palette .color {
+.color {
 	--size: calc((var(--width) - var(--ui-spacing)) / 2);
 	width: var(--size);
 	height: var(--size);
+	border: 2px solid rgba(0, 0, 0, 0.1);
+	border-radius: var(--ui-border-radius);
 	cursor: pointer;
 }
+
+/* ==================================================
+	size-picker
+================================================== */
 
 #size-picker {
 	position: absolute;
 	right: var(--ui-spacing);
 	display: flex;
 	flex-direction: column;
+	gap: var(--ui-spacing);
 	padding: var(--ui-spacing);
 }
 
-#size-picker .size {
+.size {
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	padding: var(--ui-spacing);
 	border-radius: var(--ui-border-radius);
 	box-sizing: content-box;
+	box-shadow: inset var(--shadow);
 	cursor: pointer;
 }
 
-#size-picker .size:hover {
-	box-shadow: inset var(--shadow);
-}
-
-#size-picker .size::after {
+.size::after {
 	content: "";
 	width: var(--size);
 	height: var(--size);

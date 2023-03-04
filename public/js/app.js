@@ -1,3 +1,5 @@
+const socket = io()
+
 const background    = document.querySelector("#background")
 const backgroundCtx = background.getContext("2d")
 const foreground    = document.querySelector("#foreground")
@@ -34,13 +36,22 @@ const settings = {
 	color: "black"
 }
 
+let touchEnd = false
+
 function getSize(size) { return sizes[size] }
 
 function getColor(color) { return colors[color] }
 
 function leftClicking(event) { return event.buttons === 1 }
 
-function clearContext(ctx) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height) }
+function clearForeground() { foregroundCtx.clearRect(0, 0, canvasSize.width, canvasSize.height) }
+
+function clearBackground() {
+	backgroundCtx.beginPath()
+	backgroundCtx.fillStyle = colors.white
+	backgroundCtx.fillRect(0, 0, canvasSize.width, canvasSize.height)
+	backgroundCtx.fill()
+}
 
 function clientToCanvasPosition(clientX, clientY, canvas) {
 	const canvasBounds = canvas.getBoundingClientRect()
@@ -58,10 +69,10 @@ function clientToCanvasPosition(clientX, clientY, canvas) {
 	return { x: x, y: y }
 }
 
-function draw(position, dot = false) {
+function draw(size, color, position, dot) {
 	backgroundCtx.lineCap = "round"
-	backgroundCtx.lineWidth = getSize(settings.size)
-	backgroundCtx.strokeStyle = getColor(settings.color)
+	backgroundCtx.lineWidth = size
+	backgroundCtx.strokeStyle = color
 
 	if (dot) {
 		backgroundCtx.beginPath()
@@ -77,57 +88,86 @@ function draw(position, dot = false) {
 	}
 }
 
-function drawCursor(x, y) {
+function drawCursor(position) {
 	const radius = getSize(settings.size) / 2
 	const color = getColor(settings.color)
 
 	// circle
 	foregroundCtx.beginPath()
 	foregroundCtx.fillStyle = color + "90" // 0.9 opacity
-	foregroundCtx.arc(x, y, radius, 0, Math.PI * 2)
+	foregroundCtx.arc(position.x, position.y, radius, 0, Math.PI * 2)
 	foregroundCtx.fill()
 
 	// white outline
 	foregroundCtx.beginPath()
-	foregroundCtx.strokeStyle = colors["white"]
-	foregroundCtx.arc(x, y, radius, 0, Math.PI * 2)
+	foregroundCtx.strokeStyle = colors.white
+	foregroundCtx.arc(position.x, position.y, radius, 0, Math.PI * 2)
 	foregroundCtx.stroke()
 
 	// black outline
 	foregroundCtx.beginPath()
-	foregroundCtx.strokeStyle = colors["black"]
-	foregroundCtx.arc(x, y, radius + 2, 0, Math.PI * 2)
+	foregroundCtx.strokeStyle = colors.black
+	foregroundCtx.arc(position.x, position.y, radius + 2, 0, Math.PI * 2)
 	foregroundCtx.stroke()
+}
+
+function toggleDOMsetting(setting) {
+	const prevSelected = document.querySelector("." + setting + ".selected")
+	if (prevSelected) {
+		prevSelected.classList.remove("selected")
+	}
+	const currSelected = document.querySelector("#" + settings[setting])
+	currSelected.classList.add("selected")
+}
+
+function selfClear() {
+	socket.emit("clear")
+	clearBackground()
+}
+
+function selfDraw(position, dot = false) {
+	const size = getSize(settings.size)
+	const color = getColor(settings.color)
+	draw(size, color, position, dot)
+	socket.emit("draw", size, color, position, dot)
 }
 
 window.onkeydown = (event) => {
 	const key = event.key.toLowerCase()
-	if (key === "c") { clearContext(backgroundCtx) }
+	if (key === "c") { selfClear() }
 }
 
 window.onmousedown = (event) => {
 	if (!leftClicking(event)) { return }
-	draw(clientToCanvasPosition(event.clientX, event.clientY, background), true)
+	selfDraw(clientToCanvasPosition(event.clientX, event.clientY, background), true)
 }
 
 window.onmousemove = (event) => {
-	clearContext(foregroundCtx)
-	const pos = clientToCanvasPosition(event.clientX, event.clientY, foreground)
-	drawCursor(pos.x, pos.y)
+	clearForeground()
+	if (!touchEnd) { // preventing cursor when using touch
+		drawCursor(clientToCanvasPosition(event.clientX, event.clientY, foreground))
+	}
+	touchEnd = false
 
 	if (!leftClicking(event)) { return }
-	draw(clientToCanvasPosition(event.clientX, event.clientY, background))
+	selfDraw(clientToCanvasPosition(event.clientX, event.clientY, background))
+}
+
+window.ontouchstart = (event) => {
+	selfDraw(clientToCanvasPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, background), true)
+}
+
+window.ontouchmove = (event) => {
+	selfDraw(clientToCanvasPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, background))
+}
+
+window.ontouchend = () => {
+	touchEnd = true
 }
 
 document.body.onload = () => {
+	const sizePicker   = document.querySelector("#size-picker")
 	const colorPalette = document.querySelector("#color-palette")
-	const sizePicker = document.querySelector("#size-picker")
-
-	Object.keys(colors).forEach((color) => {
-		colorPalette.innerHTML += `<div id="${color}" class="color"></div>`
-		const colorDiv = document.querySelector("#" + color)
-		colorDiv.style.backgroundColor = getColor(color)
-	})
 
 	Object.keys(sizes).forEach((size) => {
 		sizePicker.innerHTML += `<div id="${size}" class="size"></div>`
@@ -137,17 +177,39 @@ document.body.onload = () => {
 		sizeDiv.style.height = getSize("large") + "px"
 	})
 
-	const DOMcolors = document.querySelectorAll("#color-palette .color")
-	DOMcolors.forEach((color) => {
-		color.onclick = () => {
-			settings.color = color.id
-		}
+	Object.keys(colors).forEach((color) => {
+		colorPalette.innerHTML += `<div id="${color}" class="color"></div>`
+		const colorDiv = document.querySelector("#" + color)
+		colorDiv.style.backgroundColor = getColor(color)
+	})
+
+	Object.keys(settings).forEach((setting) => {
+		toggleDOMsetting(setting)
 	})
 
 	const DOMsizes = document.querySelectorAll("#size-picker .size")
 	DOMsizes.forEach((size) => {
 		size.onclick = () => {
 			settings.size = size.id
+			toggleDOMsetting("size")
 		}
 	})
+
+	const DOMcolors = document.querySelectorAll("#color-palette .color")
+	DOMcolors.forEach((color) => {
+		color.onclick = () => {
+			settings.color = color.id
+			toggleDOMsetting("color")
+		}
+	})
+
+	selfClear() // temporary, this clears everyones backgrounds whenever someone new connects
 }
+
+socket.on("clear", () => {
+	clearBackground()
+})
+
+socket.on("draw", (size, color, position, dot) => {
+	draw(size, color, position, dot)
+})
