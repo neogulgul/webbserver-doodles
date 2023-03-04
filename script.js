@@ -1,21 +1,17 @@
-function degToRad(deg) { return deg * (Math.PI / 180) }
-function radToDeg(rad) { return rad * (180 / Math.PI) }
+const background    = document.querySelector("#background")
+const backgroundCtx = background.getContext("2d")
+const foreground    = document.querySelector("#foreground")
+const foregroundCtx = foreground.getContext("2d")
 
-const canvas = document.querySelector("canvas")
-const ctx = canvas.getContext("2d")
-const currentColor = document.querySelector("#current-color")
-const colorPalette = document.querySelector("#color-palette")
+const canvasSize = { width: 1024, height: 1024 }
+background.width = canvasSize.width; background.height = canvasSize.height
+foreground.width = canvasSize.width; foreground.height = canvasSize.height
 
-const canvasSize = {
-	x: 1024,
-	y: 1024
-}
-
-canvas.width  = canvasSize.x
-canvas.height = canvasSize.y
-
-function leftClick(event) {
-	return event.button === 0
+const sizes = {
+	tiny:    8,
+	small:  16,
+	medium: 32,
+	large:  64
 }
 
 const colors = {
@@ -34,159 +30,124 @@ const colors = {
 }
 
 const settings = {
-	radius: 10,
-	color: "black",
-	getColorHex: () => { return colors[settings.color] }
+	size: "medium",
+	color: "black"
 }
 
-let drawing = false
-const pos = {
-	x: undefined,
-	y: undefined
-}
+function getSize(size) { return sizes[size] }
 
-function resetPos() {
-	pos.x = undefined
-	pos.y = undefined
-}
+function getColor(color) { return colors[color] }
 
-function draw(x, y) {
+function leftClicking(event) { return event.buttons === 1 }
+
+function clearContext(ctx) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height) }
+
+function clientToCanvasPosition(clientX, clientY, canvas) {
 	const canvasBounds = canvas.getBoundingClientRect()
 
-	const canvasPos = {
-		x: Math.ceil(canvasBounds.x),
-		y: Math.ceil(canvasBounds.y)
-	}
-
 	const canvasDimensions = {
+		x: Math.ceil(canvasBounds.x),
+		y: Math.ceil(canvasBounds.y),
 		width:  Math.round(canvasBounds.width)  - 1,
 		height: Math.round(canvasBounds.height) - 1
 	}
 
-	const lastPos = {
-		x: pos.x,
-		y: pos.y
+	const x = (clientX - canvasDimensions.x) / canvasDimensions.width  * canvas.width
+	const y = (clientY - canvasDimensions.y) / canvasDimensions.height * canvas.height
+
+	return { x: x, y: y }
+}
+
+function draw(position, dot = false) {
+	backgroundCtx.lineCap = "round"
+	backgroundCtx.lineWidth = getSize(settings.size)
+	backgroundCtx.strokeStyle = getColor(settings.color)
+
+	if (dot) {
+		backgroundCtx.beginPath()
+		backgroundCtx.moveTo(position.x, position.y)
+		backgroundCtx.lineTo(position.x, position.y)
+		backgroundCtx.stroke()
 	}
-
-	pos.x = (x - canvasPos.x) / canvasDimensions.width  * canvasSize.x
-	pos.y = (y - canvasPos.y) / canvasDimensions.height * canvasSize.y
-
-	const deltaPos = {
-		x: pos.x - lastPos.x || 0,
-		y: pos.y - lastPos.y || 0
-	}
-
-	let deltaDistance = Math.sqrt(Math.pow(deltaPos.x, 2) + Math.pow(deltaPos.y, 2))
-
-	if (deltaDistance === 0)
-	{
-		drawCircle(pos.x, pos.y, settings.radius, settings.getColorHex())
-	}
-	else
-	{
-		const angle = Math.atan(deltaPos.x / deltaPos.y)
-		const currPos = {
-			x: lastPos.x,
-			y: lastPos.y
-		}
-		while (deltaDistance !== 0) {
-			const deltaStep = 1
-			currPos.x += Math.sin(angle) * deltaStep
-			currPos.y += Math.cos(angle) * deltaStep
-			deltaDistance -= deltaStep
-			if (deltaDistance < 0) {
-				deltaDistance = 0
-				currPos.x = pos.x
-				currPos.y = pos.y
-			}
-			drawCircle(currPos.x, currPos.y, settings.radius, settings.getColorHex())
-		}
+	else {
+		backgroundCtx.lineTo(position.x, position.y)
+		backgroundCtx.stroke()
+		backgroundCtx.beginPath()
+		backgroundCtx.moveTo(position.x, position.y)
 	}
 }
 
-window.onmousedown = (event) => {
-	if (!leftClick(event)) { return }
-	drawing = true
-	draw(event.clientX, event.clientY)
-}
+function drawCursor(x, y) {
+	const radius = getSize(settings.size) / 2
+	const color = getColor(settings.color)
 
-window.onmouseup = (event) => {
-	if (!leftClick(event)) { return }
-	drawing = false
-	resetPos()
-}
+	// circle
+	foregroundCtx.beginPath()
+	foregroundCtx.fillStyle = color + "90" // 0.9 opacity
+	foregroundCtx.arc(x, y, radius, 0, Math.PI * 2)
+	foregroundCtx.fill()
 
-canvas.onmousemove = (event) => {
-	if (!drawing) { return }
-	draw(event.clientX, event.clientY)
-}
+	// white outline
+	foregroundCtx.beginPath()
+	foregroundCtx.strokeStyle = colors["white"]
+	foregroundCtx.arc(x, y, radius, 0, Math.PI * 2)
+	foregroundCtx.stroke()
 
-canvas.onmouseout = () => {
-	resetPos()
-}
-
-window.ontouchstart = (event) => {
-	drawing = true
-	draw(event.changedTouches[0].clientX, event.changedTouches[0].clientY)
-}
-
-window.ontouchend = () => {
-	drawing = false
-	resetPos()
-}
-
-canvas.ontouchmove = (event) => {
-	if (!drawing) { return }
-	draw(event.changedTouches[0].clientX, event.changedTouches[0].clientY)
-}
-
-function drawCircle(x, y, radius, color) {
-	ctx.beginPath()
-	ctx.fillStyle = color
-	ctx.strokeStyle = color
-	ctx.arc(x, y, radius, 0, Math.PI * 2)
-	ctx.fill()
-	ctx.stroke()
-}
-
-function clearCanvas() {
-	ctx.beginPath()
-	ctx.fillStyle = colors.white
-	ctx.fillRect(0, 0, canvasSize.x, canvasSize.y)
-	ctx.fill()
+	// black outline
+	foregroundCtx.beginPath()
+	foregroundCtx.strokeStyle = colors["black"]
+	foregroundCtx.arc(x, y, radius + 2, 0, Math.PI * 2)
+	foregroundCtx.stroke()
 }
 
 window.onkeydown = (event) => {
-	const key = event.key
-	if (key === "c") {
-		clearCanvas()
-	}
+	const key = event.key.toLowerCase()
+	if (key === "c") { clearContext(backgroundCtx) }
 }
 
-function updateCurrentColor() {
-	currentColor.style.backgroundColor = settings.getColorHex()
-	currentColor.innerHTML = `<div class="info">Current color (${settings.color})</div>`
+window.onmousedown = (event) => {
+	if (!leftClicking(event)) { return }
+	draw(clientToCanvasPosition(event.clientX, event.clientY, background), true)
 }
 
-function main() {
-	clearCanvas()
+window.onmousemove = (event) => {
+	clearContext(foregroundCtx)
+	const pos = clientToCanvasPosition(event.clientX, event.clientY, foreground)
+	drawCursor(pos.x, pos.y)
 
-	updateCurrentColor()
+	if (!leftClicking(event)) { return }
+	draw(clientToCanvasPosition(event.clientX, event.clientY, background))
+}
+
+document.body.onload = () => {
+	const colorPalette = document.querySelector("#color-palette")
+	const sizePicker = document.querySelector("#size-picker")
 
 	Object.keys(colors).forEach((color) => {
 		colorPalette.innerHTML += `<div id="${color}" class="color"></div>`
 		const colorDiv = document.querySelector("#" + color)
-		colorDiv.style.backgroundColor = colors[color]
-		colorDiv.innerHTML = `<div class="info">${color}</div>`
+		colorDiv.style.backgroundColor = getColor(color)
+	})
+
+	Object.keys(sizes).forEach((size) => {
+		sizePicker.innerHTML += `<div id="${size}" class="size"></div>`
+		const sizeDiv = document.querySelector("#" + size)
+		sizeDiv.style.setProperty("--size", getSize(size) + "px")
+		sizeDiv.style.width = getSize("large") + "px"
+		sizeDiv.style.height = getSize("large") + "px"
 	})
 
 	const DOMcolors = document.querySelectorAll("#color-palette .color")
 	DOMcolors.forEach((color) => {
 		color.onclick = () => {
 			settings.color = color.id
-			updateCurrentColor()
+		}
+	})
+
+	const DOMsizes = document.querySelectorAll("#size-picker .size")
+	DOMsizes.forEach((size) => {
+		size.onclick = () => {
+			settings.size = size.id
 		}
 	})
 }
-
-main()
