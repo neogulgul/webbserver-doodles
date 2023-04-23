@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="icon" href="assets/icon/icon.png">
+	<title>doodles - {{title}}</title>
+	<link rel="stylesheet" href="css/style.css">
+
+	{{#each css}}
+		<link rel="stylesheet" href="css/{{this}}.css">
+	{{/each}}
+
+</head>
+<body>
+	<div id="root">
+
+		{{#if nav}}
+			<nav>
+				<a href="/">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 21.0001H5C4.44772 21.0001 4 20.5524 4 20.0001V11.0001L1 11.0001L11.3273 1.61162C11.7087 1.26488 12.2913 1.26488 12.6727 1.61162L23 11.0001L20 11.0001V20.0001C20 20.5524 19.5523 21.0001 19 21.0001ZM6 19.0001H18V9.15757L12 3.70302L6 9.15757V19.0001Z"></path></svg>
+					Home
+				</a>
+				<a href="">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 22C4 17.5817 7.58172 14 12 14C16.4183 14 20 17.5817 20 22H18C18 18.6863 15.3137 16 12 16C8.68629 16 6 18.6863 6 22H4ZM12 13C8.685 13 6 10.315 6 7C6 3.685 8.685 1 12 1C15.315 1 18 3.685 18 7C18 10.315 15.315 13 12 13ZM12 11C14.21 11 16 9.21 16 7C16 4.79 14.21 3 12 3C9.79 3 8 4.79 8 7C8 9.21 9.79 11 12 11Z"></path></svg>
+					Profile
+				</a>
+				<a href="">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.0049 16.941V19.0029H18.0049V21.0029H6.00488V19.0029H11.0049V16.941C7.05857 16.4489 4.00488 13.0825 4.00488 9.00293V3.00293H20.0049V9.00293C20.0049 13.0825 16.9512 16.4489 13.0049 16.941ZM6.00488 5.00293V9.00293C6.00488 12.3166 8.69117 15.0029 12.0049 15.0029C15.3186 15.0029 18.0049 12.3166 18.0049 9.00293V5.00293H6.00488ZM1.00488 5.00293H3.00488V9.00293H1.00488V5.00293ZM21.0049 5.00293H23.0049V9.00293H21.0049V5.00293Z"></path></svg>
+					Leaderboards
+				</a>
+				<a href="">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path></svg>
+					Global Stats
+				</a>
+			</nav>
+		{{/if}}
+
+		{{{body}}}
+
+	</div>
+
+	{{#if socket}}
+		<script src="/socket.io/socket.io.js"></script>
+	{{/if}}
+
+	{{#each js}}
+		<script src="js/{{this}}.js"></script>
+	{{/each}}
+
+</body>
+</html>

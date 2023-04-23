@@ -1,19 +1,21 @@
 @font-face {
-	font-family: "Inter";
-	src: url(../assets/fonts/Inter-Regular.ttf);
+	font-family: "Nunito";
+	src: url(/assets/fonts/Nunito-Bold.ttf);
 }
 
 :root {
 	/* colors */
-	--background:     #eeeeee;
-	--background-alt: #ffffff;
+	--background:     #ffffff;
 	--foreground:     #000000;
-	--selection:      #7df9ff;
+	--outline:        #eeeeee;
+	--main:           #7abbd7;
+	--valid:          #3fb950;
+	--invalid:        #f85149;
 
 	/* other */
-	--ui-spacing: 15px;
-	--ui-border-radius: 10px;
-	--shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+	--shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.1);
+	--text-spacing: 5px;
+	--radius: 10px;
 }
 
 * {
@@ -21,7 +23,7 @@
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-	font-family: "Inter";
+	font-family: "Nunito";
 	font-size: 15px;
 	font-weight: normal;
 	line-height: 125%;
@@ -39,97 +41,41 @@ body {
 #root {
 	display: flex;
 	flex-direction: column;
-	justify-content: center;
 	align-items: center;
 	height: 100%;
 	overflow-x: hidden;
 }
 
-.ui-box {
-	border-radius: var(--ui-border-radius);
-	box-shadow: var(--shadow);
-	background-color: var(--background-alt);
+span {
+	font-size: inherit;
+	color: inherit;
 }
 
-.selected {
-	outline: 2px solid var(--selection);
+h1 {
+	font-size: 3em;
+	margin: 20px;
 }
 
-/* ==================================================
-	canvas
-================================================== */
-
-#canvas {
-	--size: calc(100vmin - var(--ui-spacing) * 2);
-	width: var(--size);
-	height: var(--size);
-	cursor: none;
+h2 {
+	font-size: 2em;
 }
 
-#canvas canvas {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	border-radius: inherit;
+a {
+	text-decoration: none;
+	color: var(--main);
 }
 
-#foreground {
-	pointer-events: none;
-}
-
-/* ==================================================
-	color-palette
-================================================== */
-
-#color-palette {
-	--width: 100px;
-	position: absolute;
-	left: var(--ui-spacing);
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--ui-spacing);
-	width: var(--width);
-	padding: var(--ui-spacing);
-	box-sizing: content-box;
-}
-
-.color {
-	--size: calc((var(--width) - var(--ui-spacing)) / 2);
-	width: var(--size);
-	height: var(--size);
-	border: 2px solid rgba(0, 0, 0, 0.1);
-	border-radius: var(--ui-border-radius);
+button {
+	padding: 10px 40px;
+	border: 2px solid var(--main);
+	border-radius: var(--radius);
+	background-color: var(--background);
+	color: var(--main);
+	transition: 0.2s;
 	cursor: pointer;
 }
 
-/* ==================================================
-	size-picker
-================================================== */
-
-#size-picker {
-	position: absolute;
-	right: var(--ui-spacing);
-	display: flex;
-	flex-direction: column;
-	gap: var(--ui-spacing);
-	padding: var(--ui-spacing);
-}
-
-.size {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	padding: var(--ui-spacing);
-	border-radius: var(--ui-border-radius);
-	box-sizing: content-box;
-	box-shadow: inset var(--shadow);
-	cursor: pointer;
-}
-
-.size::after {
-	content: "";
-	width: var(--size);
-	height: var(--size);
-	border-radius: 50%;
-	background-color: #000;
+button:hover {
+	background-color: var(--main);
+	color: var(--background);
 }

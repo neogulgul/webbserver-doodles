@@ -1,5 +1,11 @@
 const socket = io()
 
+const clickMe = document.querySelector("button")
+clickMe.onclick = () => {
+	document.querySelector("#home").style.display = "none"
+	document.querySelector("#game").style.display = "flex"
+}
+
 const background    = document.querySelector("#background")
 const backgroundCtx = background.getContext("2d")
 const foreground    = document.querySelector("#foreground")

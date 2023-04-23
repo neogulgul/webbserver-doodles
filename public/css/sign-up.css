@@ -1,0 +1,26 @@
+ul {
+	display: flex;
+	flex-direction: column;
+	gap: var(--text-spacing);
+	margin-top: var(--text-spacing);
+	margin-left: calc(1em + var(--text-spacing));
+}
+
+li {
+	--color: var(--invalid);
+	list-style: none;
+	color: var(--color);
+}
+
+li.valid {
+	--color: var(--valid);
+}
+
+li svg {
+	position: absolute;
+	width: 1em;
+	top: 50%;
+	left: calc(-1em - var(--text-spacing));
+	transform: translate(0, -50%);
+	fill: var(--color);
+}

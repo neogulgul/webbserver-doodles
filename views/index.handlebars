@@ -1,0 +1,12 @@
+<h1>doodles</h1>
+{{#if loggedIn}}
+<h2>Welcome {{username}}!</h2>
+<button>Play</button>
+{{else}}
+<h2>You need an account to play.</h2>
+<a href="sign-in">
+	<button>
+		Sign in
+	</button>
+</a>
+{{/if}}
