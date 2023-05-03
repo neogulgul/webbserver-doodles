@@ -1,12 +1,18 @@
-<h1>doodles</h1>
-{{#if loggedIn}}
-<h2>Welcome {{username}}!</h2>
-<button>Play</button>
-{{else}}
-<h2>You need an account to play.</h2>
-<a href="sign-in">
-	<button>
-		Sign in
-	</button>
-</a>
-{{/if}}
+<main>
+	<h1>doodles</h1>
+	{{#if loggedIn}}
+	<h2>Welcome {{username}}!</h2>
+	{{else}}
+	<h2>You are not logged in.</h2>
+	<a href="/sign-in">
+		<button>
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 15H6V20H18V4H6V9H4V3C4 2.44772 4.44772 2 5 2H19C19.5523 2 20 2.44772 20 3V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V15ZM10 11V8L15 12L10 16V13H2V11H10Z"></path></svg>
+			Sign in
+		</button>
+	</a>
+	<h2>You can still play as a guest, but your scores won't be saved.</h2>
+	{{/if}}
+	<a href="/game">
+		<button>Play!</button>
+	</a>
+</main>

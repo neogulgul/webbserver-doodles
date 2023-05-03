@@ -46,14 +46,47 @@ body {
 	overflow-x: hidden;
 }
 
+nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: center;
+	gap: 50px;
+	padding: 50px;
+	width: 100%;
+	border-bottom: 2px solid var(--outline);
+}
+
+nav a {
+	display: flex;
+	align-items: center;
+	gap: var(--text-spacing);
+	font-size: 1.5em;
+	white-space: nowrap;
+}
+
+nav a svg {
+	width: 1.5em;
+	fill: var(--main);
+}
+
+main {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	padding: 40px;
+}
+
 span {
 	font-size: inherit;
 	color: inherit;
 }
 
 h1 {
-	font-size: 3em;
 	margin: 20px;
+	font-size: 3em;
+	text-align: center;
 }
 
 h2 {
@@ -66,16 +99,29 @@ a {
 }
 
 button {
+	--color: var(--main);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: var(--text-spacing);
 	padding: 10px 40px;
-	border: 2px solid var(--main);
+	border: 2px solid var(--color);
 	border-radius: var(--radius);
 	background-color: var(--background);
-	color: var(--main);
+	color: var(--color);
+	fill: var(--color);
 	transition: 0.2s;
 	cursor: pointer;
 }
 
+button svg {
+	width: 1em;
+	fill: inherit;
+	transition: inherit;
+}
+
 button:hover {
-	background-color: var(--main);
+	background-color: var(--color);
 	color: var(--background);
+	fill: var(--background);
 }

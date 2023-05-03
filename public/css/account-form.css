@@ -29,32 +29,12 @@ input:focus {
 
 #submit {
 	--color: var(--outline);
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	gap: var(--text-spacing);
-	border-color: var(--color);
-	background-color: var(--background);
-	color: var(--color);
-	fill: var(--color);
 	pointer-events: none;
 }
 
 #submit.valid {
 	--color: var(--main);
-	cursor: pointer;
 	pointer-events: all;
-}
-
-#submit.valid:hover {
-	--color: var(--background);
-	border-color: var(--main);
-	background-color: var(--main);
-}
-
-#submit svg {
-	width: 1em;
-	fill: inherit;
 }
 
 input {

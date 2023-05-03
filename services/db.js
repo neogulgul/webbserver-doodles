@@ -10,16 +10,27 @@ async function getConnection() {
 }
 
 async function SELECT(statement) {
-	const connection = await getConnection()
-	const result = await connection.execute(statement)
-	await connection.end()
-	return result[0]
+	try {
+		const connection = await getConnection()
+		const result = await connection.execute(statement)
+		await connection.end()
+		return result[0]
+	} catch (err) {
+		console.log(err)
+		return false
+	}
 }
 
-async function INSERT(statement) {
-	const connection = await getConnection()
-	await connection.execute(statement)
-	await connection.end()
+async function EXECUTE(statement) {
+	try {
+		const connection = await getConnection()
+		await connection.execute(statement)
+		await connection.end()
+		return true
+	} catch (err) {
+		console.log(err)
+		return false
+	}
 }
 
 function prepSQL(sql, statements) {
@@ -28,6 +39,6 @@ function prepSQL(sql, statements) {
 
 module.exports = {
 	SELECT,
-	INSERT,
+	EXECUTE,
 	prepSQL
 }
