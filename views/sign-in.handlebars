@@ -1,5 +1,8 @@
 <h1>Sign in to your account</h1>
 <form method="POST" action="sign-in" autocomplete="off">
+	{{#if error}}
+	<p class="error">Invalid credentials.</p>
+	{{/if}}
 	<label  for="username">Username</label>
 	<input name="username" type="text">
 	<label  for="password">Password</label>

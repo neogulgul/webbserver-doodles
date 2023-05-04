@@ -9,7 +9,11 @@ async function getConnection() {
 	})
 }
 
-async function SELECT(statement) {
+function prepSQL(sql, statements) {
+	return mysql.format(sql, statements)
+}
+
+async function execute(statement) {
 	try {
 		const connection = await getConnection()
 		const result = await connection.execute(statement)
@@ -21,24 +25,7 @@ async function SELECT(statement) {
 	}
 }
 
-async function EXECUTE(statement) {
-	try {
-		const connection = await getConnection()
-		await connection.execute(statement)
-		await connection.end()
-		return true
-	} catch (err) {
-		console.log(err)
-		return false
-	}
-}
-
-function prepSQL(sql, statements) {
-	return mysql.format(sql, statements)
-}
-
 module.exports = {
-	SELECT,
-	EXECUTE,
-	prepSQL
+	prepSQL,
+	execute
 }

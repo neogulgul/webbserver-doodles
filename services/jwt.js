@@ -20,7 +20,7 @@ async function verifyToken(token) {
 
 		const id = decoded.sub
 		const sql = db.prepSQL("SELECT * FROM users WHERE id = ?", [id])
-		const result = await db.SELECT(sql)
+		const result = await db.execute(sql)
 		if (!result) { return false }
 
 		const valid = result.length === 1

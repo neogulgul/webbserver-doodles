@@ -9,13 +9,14 @@
 	--foreground:     #000000;
 	--outline:        #eeeeee;
 	--main:           #7abbd7;
-	--valid:          #3fb950;
-	--invalid:        #f85149;
+	--success:        #3fb950;
+	--error:          #f85149;
 
 	/* other */
 	--shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.1);
-	--text-spacing: 5px;
 	--radius: 10px;
+	--text-spacing: 5px;
+	--transition: 0.2s;
 }
 
 * {
@@ -44,6 +45,33 @@ body {
 	align-items: center;
 	height: 100%;
 	overflow-x: hidden;
+}
+
+#home-button {
+	position: absolute;
+	top: 25px;
+	left: 25px;
+	display: flex;
+	justify-content: center;
+	align-content: center;
+	width: 50px;
+	height: 50px;
+	border: 2px solid var(--main);
+	border-radius: 50%;
+	box-shadow: var(--shadow);
+	background-color: var(--background);
+	fill: var(--main);
+	transition: var(--transition);
+}
+
+#home-button svg {
+	width: 50%;
+	fill: inherit;
+}
+
+#home-button:hover {
+	background-color: var(--main);
+	fill: var(--background);
 }
 
 nav {
@@ -110,7 +138,7 @@ button {
 	background-color: var(--background);
 	color: var(--color);
 	fill: var(--color);
-	transition: 0.2s;
+	transition: var(--transition);
 	cursor: pointer;
 }
 
@@ -124,4 +152,16 @@ button:hover {
 	background-color: var(--color);
 	color: var(--background);
 	fill: var(--background);
+}
+
+button.success {
+	--color: var(--success);
+}
+
+button.error {
+	--color: var(--error);
+}
+
+.error {
+	color: var(--error);
 }

@@ -7,13 +7,13 @@ ul {
 }
 
 li {
-	--color: var(--invalid);
+	--color: var(--error);
 	list-style: none;
 	color: var(--color);
 }
 
 li.valid {
-	--color: var(--valid);
+	--color: var(--success);
 }
 
 li svg {
