@@ -129,6 +129,7 @@ app.post("/sign-up", async (req, res) => {
 app.get("/game", (req, res) => {
 	res.render("game", {
 		title: "Game",
+		css: ["game"],
 		js: ["game"],
 		socket: true
 	})
@@ -161,13 +162,26 @@ server.listen(port, () => {
 	console.log(`Server listening on port ${port}.`)
 })
 
-const lobby = {}
+const game = {
+	playing: false,
+	lobby: {},
+	getPlayerCount: () => {
+		return Object.keys(game.lobby).length
+	},
+	updatePlayingStatus: () => {
+		game.playing = game.getPlayerCount() >= 2
+	},
+	updateLobby: (io) => {
+		game.updatePlayingStatus()
+		io.in("game").emit("game-lobby-change", game)
+	}
+}
 
 io.on("connection", (socket) => {
 	socket.on("disconnect", () => {
-		if (Object.keys(lobby).includes(socket.id)) {
-			delete lobby[socket.id]
-			io.in("game").emit("game-lobby-change", lobby)
+		if (Object.keys(game.lobby).includes(socket.id)) {
+			delete game.lobby[socket.id]
+			game.updateLobby(io)
 		}
 	})
 
@@ -177,20 +191,15 @@ io.on("connection", (socket) => {
 		const username = decodedToken.username
 
 		if (username === undefined) {
-			lobby[socket.id] = "guest"
-		} else if (!Object.values(lobby).includes(username)) {
-			lobby[socket.id] = username
+			game.lobby[socket.id] = "guest"
+		} else if (!Object.values(game.lobby).includes(username)) {
+			game.lobby[socket.id] = username
 		} else {
 			socket.emit("game-already-playing")
 			return
 		}
 
 		socket.join("game")
-
-		io.in("game").emit("game-lobby-change", lobby)
-	})
-
-	socket.on("game-win", () => {
-		console.log("won:", lobby[socket.id])
+		game.updateLobby(io)
 	})
 })
