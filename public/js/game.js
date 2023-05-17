@@ -7,6 +7,9 @@ const main          = document.querySelector("main")
 const playerCount   = document.querySelector("#player-count")
 const playerList    = document.querySelector("#player-list")
 
+const messages      = document.querySelector("#messages")
+const input         = document.querySelector("input")
+
 const canvas        = document.querySelector("#canvas")
 const background    = document.querySelector("#background")
 const backgroundCtx = background.getContext("2d")
@@ -196,7 +199,6 @@ window.ontouchend = () => {
 }
 
 document.body.onload = () => {
-	const menu = document.querySelector("#menu")
 	const menuItemTitles = document.querySelectorAll("#menu li p")
 	const dropDownSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 15.0006L7.75732 10.758L9.17154 9.34375L12 12.1722L14.8284 9.34375L16.2426 10.758L12 15.0006Z"></path></svg>`
 
@@ -251,6 +253,20 @@ document.body.onload = () => {
 	selfClear() // temporary, this clears everyones backgrounds whenever someone new connects
 }
 
+document.body.onclick = (event) => {
+	const activeMenuItem = document.querySelector("#menu .active")
+	if (activeMenuItem && !activeMenuItem.contains(event.target)) {
+		activeMenuItem.classList.remove("active")
+	}
+}
+
+input.onkeydown = (event) => {
+	if (input.value && event.key === "Enter") {
+		socket.emit("game-player-message", socket.id, input.value)
+		input.value = ""
+	}
+}
+
 socket.on("game-clear", () => {
 	clearBackground()
 })
@@ -266,9 +282,27 @@ socket.on("game-already-playing", () => {
 socket.on("game-lobby-change", (game) => {
 	playerList.innerHTML = ""
 	let i = 0
-	Object.values(game.lobby).forEach((value) => {
+	Object.keys(game.lobby).forEach((key) => {
 		i++
-		playerList.innerHTML += `<li>#${i} ${value}</li>`
+		const name = game.lobby[key].name
+		const id = game.lobby[key].id
+		if (key === socket.id) {
+			playerList.innerHTML += `<li class="you">#${id} ${name} (you)</li>`
+		} else {
+			playerList.innerHTML += `<li>#${id} ${name}</li>`
+		}
 	})
 	playerCount.innerHTML = "Players: " + i
+})
+
+socket.on("game-player-message", (senderSocketId, id, name, message) => {
+	if (socket.id === senderSocketId) {
+		messages.innerHTML += `<li class="you">#${id} ${name} (you): ${message}</li>`
+	} else {
+		messages.innerHTML += `<li>#${id} ${name}: ${message}</li>`
+	}
+})
+
+socket.on("game-server-message", (message) => {
+	messages.innerHTML += `<li class="server">${message}</li>`
 })

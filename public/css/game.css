@@ -37,6 +37,14 @@ main {
 	outline: 2px solid var(--selection);
 }
 
+.you {
+	color: var(--main);
+}
+
+.server {
+	color: var(--success);
+}
+
 /* ==================================================
 	menu
 ================================================== */
@@ -45,6 +53,8 @@ main {
 	position: absolute;
 	bottom: calc(100% + var(--ui-spacing));
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	gap: calc(var(--ui-spacing) * 3);
 	list-style: none;
 }
@@ -176,7 +186,6 @@ main {
 
 #player-list {
 	border: 2px solid var(--outline);
-	border-radius: var(--ui-spacing);
 	list-style: none;
 }
 
@@ -189,15 +198,38 @@ main {
 	background-color: var(--outline);
 }
 
-#player-list li:first-child {
-	border-radius: var(--ui-border-radius) var(--ui-border-radius) 0 0;
+/* ==================================================
+	chat
+================================================== */
+
+#chat {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: var(--ui-spacing);
+	padding: var(--ui-spacing);
+	width: var(--canvas-size);
+	height: calc(var(--canvas-size) / 2);
 }
 
-#player-list li:last-child {
-	border-radius: 0 0 var(--ui-border-radius) var(--ui-border-radius);
+#messages {
+	height: 100%;
+	border: 2px solid var(--outline);
+	overflow-y: scroll;
+	list-style: none;
 }
 
+#messages li {
+	padding: 5px;
+	word-wrap: break-word;
+}
 
-#player-list li:first-child:last-child {
-	border-radius: var(--ui-border-radius);
+#messages li:nth-child(odd) {
+	background-color: var(--outline);
+}
+
+input {
+	border: 2px solid var(--outline);
+	outline: none;
+	padding: 5px;
 }

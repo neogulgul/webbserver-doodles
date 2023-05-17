@@ -166,6 +166,13 @@ server.listen(port, () => {
 const game = {
 	playing: false,
 	lobby: {},
+	lobbyCounter: 0,
+	drawer: undefined,
+	drawQueue: [],
+	addToLobby: (socketId, name) => {
+		game.lobby[socketId] = { id: game.lobbyCounter, name: name }
+		game.lobbyCounter++
+	},
 	getPlayerCount: () => {
 		return Object.keys(game.lobby).length
 	},
@@ -175,13 +182,25 @@ const game = {
 	updateLobby: (io) => {
 		game.updatePlayingStatus()
 		io.in("game").emit("game-lobby-change", game)
+
+		console.clear()
+		console.log("Draw Queue:")
+		game.drawQueue.forEach((socketId) => {
+			const player = game.lobby[socketId]
+			console.log(`#${player.id} ${player.name}`)
+		})
 	}
 }
 
 io.on("connection", (socket) => {
 	socket.on("disconnect", () => {
 		if (Object.keys(game.lobby).includes(socket.id)) {
+			const player = game.lobby[socket.id]
+			socket.to("game").emit("game-server-message", `#${player.id} ${player.name} just left.`)
+
 			delete game.lobby[socket.id]
+			const drawQueueIndex = game.drawQueue.indexOf(socket.id)
+			game.drawQueue.splice(drawQueueIndex, 1)
 			game.updateLobby(io)
 		}
 	})
@@ -192,16 +211,33 @@ io.on("connection", (socket) => {
 		const username = decodedToken.username
 
 		if (username === undefined) {
-			game.lobby[socket.id] = "guest"
-		} else if (!Object.values(game.lobby).includes(username)) {
-			game.lobby[socket.id] = username
+			game.addToLobby(socket.id, "guest")
 		} else {
-			socket.emit("game-already-playing")
-			return
+			let alreadyPlaying = false
+
+			const players = Object.values(game.lobby)
+
+			for (let i = 0; i < players.length; i++) {
+				if (players[i].name === username) {
+					alreadyPlaying = true
+					break
+				}
+			}
+
+			if (alreadyPlaying) {
+				socket.emit("game-already-playing")
+				return
+			}
+
+			game.addToLobby(socket.id, username)
 		}
 
 		socket.join("game")
+		game.drawQueue.push(socket.id)
 		game.updateLobby(io)
+
+		const player = game.lobby[socket.id]
+		socket.to("game").emit("game-server-message", `#${player.id} ${player.name} just joined.`)
 	})
 
 	socket.on("game-clear", () => {
@@ -210,5 +246,11 @@ io.on("connection", (socket) => {
 
 	socket.on("game-draw", (size, color, position, dot) => {
 		socket.to("game").emit("game-draw", size, color, position, dot)
+	})
+
+	socket.on("game-player-message", (senderSocketId, message) => {
+		const   id = game.lobby[senderSocketId].id
+		const name = game.lobby[senderSocketId].name
+		io.in("game").emit("game-player-message", senderSocketId, id, name, message)
 	})
 })
