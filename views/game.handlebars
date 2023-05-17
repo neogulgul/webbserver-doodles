@@ -1,12 +1,23 @@
-<div id="game-info">
-	<h1 id="playing-status"></h1>
-	<h2 id="player-count"></h2>
-	<ul id="player-list"></ul>
+<div id="game-container">
+	<ul id="menu">
+	<li>
+		<p>Palette</p>
+		<div id="color-palette" class="ui-box menu-content"></div>
+	</li>
+	<li>
+		<p>Sizes</p>
+		<div id="size-picker" class="ui-box menu-content"></div>
+	</li>
+	<li>
+		<p>Lobby</p>
+		<div id="lobby" class="ui-box menu-content">
+			<h2 id="player-count"></h2>
+			<ul id="player-list"></ul>
+		</div>
+	</li>
+	</ul>
+	<div id="canvas" class="ui-box">
+		<canvas id="background"></canvas>
+		<canvas id="foreground"></canvas>
+	</div>
 </div>
-
-<div id="canvas" class="ui-box">
-	<canvas id="background"></canvas>
-	<canvas id="foreground"></canvas>
-</div>
-<div id="color-palette" class="ui-box"></div>
-<div id="size-picker" class="ui-box"></div>

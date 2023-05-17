@@ -1,20 +1,36 @@
 :root {
 	/* colors */
-	--selection:      #7df9ff;
+	--selection: #7df9ff;
 
 	/* other */
+	--canvas-margin: 10vmin;
+	--canvas-size: calc(100vmin - var(--canvas-margin) * 2);
 	--ui-spacing: 15px;
 	--ui-border-radius: 10px;
 }
 
-#game-info {
-	position: absolute;
+* {
+	user-select: none;
+}
+
+main {
+	width: 100%;
+	height: 100%;
+	justify-content: center;
+	padding: 0;
+	touch-action: none;
+}
+
+#game-container {
+	position: relative;
+	display: flex;
+	justify-content: center;
 }
 
 .ui-box {
 	border-radius: var(--ui-border-radius);
 	box-shadow: var(--shadow);
-	background-color: var(--background-alt);
+	background-color: var(--background);
 }
 
 .selected {
@@ -22,14 +38,59 @@
 }
 
 /* ==================================================
+	menu
+================================================== */
+
+#menu {
+	position: absolute;
+	bottom: calc(100% + var(--ui-spacing));
+	display: flex;
+	gap: calc(var(--ui-spacing) * 3);
+	list-style: none;
+}
+
+#menu li p {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+}
+
+#menu li p svg {
+	width: 1.8em;
+	height: 1.8em;
+	transition: var(--transition);
+}
+
+#menu li.active p svg {
+	transform: rotate(180deg);
+}
+
+.menu-content {
+	position: fixed;
+	z-index: 100;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, -100%);
+	opacity: 0;
+	transition: var(--transition);
+}
+
+.active .menu-content {
+	top: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 1;
+}
+
+/* ==================================================
 	canvas
 ================================================== */
 
 #canvas {
-	--size: calc(100vmin - var(--ui-spacing) * 2);
-	width: var(--size);
-	height: var(--size);
+	position: relative;
+	width: var(--canvas-size);
+	height: var(--canvas-size);
 	cursor: none;
+	touch-action: none;
 }
 
 #canvas canvas {
@@ -48,21 +109,18 @@
 ================================================== */
 
 #color-palette {
-	--width: 100px;
-	position: absolute;
-	left: var(--ui-spacing);
+	--color-size: 40px;
+	--colors-per-row: 3;
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--ui-spacing);
-	width: var(--width);
+	width: calc(var(--color-size) * var(--colors-per-row) + var(--ui-spacing) * (var(--colors-per-row) + 1));
 	padding: var(--ui-spacing);
-	box-sizing: content-box;
 }
 
 .color {
-	--size: calc((var(--width) - var(--ui-spacing)) / 2);
-	width: var(--size);
-	height: var(--size);
+	width: var(--color-size);
+	height: var(--color-size);
 	border: 2px solid rgba(0, 0, 0, 0.1);
 	border-radius: var(--ui-border-radius);
 	cursor: pointer;
@@ -73,11 +131,12 @@
 ================================================== */
 
 #size-picker {
-	position: absolute;
-	right: var(--ui-spacing);
+	--size-size: 64px;
+	--sizes-per-row: 2;
 	display: flex;
-	flex-direction: column;
+	flex-wrap: wrap;
 	gap: var(--ui-spacing);
+	width: calc((var(--size-size) + var(--ui-spacing) * 2) * var(--sizes-per-row) + var(--ui-spacing) * (var(--sizes-per-row) + 1));
 	padding: var(--ui-spacing);
 }
 
@@ -85,6 +144,8 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	width: var(--size-size);
+	height: var(--size-size);
 	padding: var(--ui-spacing);
 	border-radius: var(--ui-border-radius);
 	box-sizing: content-box;
@@ -98,4 +159,45 @@
 	height: var(--size);
 	border-radius: 50%;
 	background-color: #000;
+}
+
+/* ==================================================
+	lobby
+================================================== */
+
+#lobby {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ui-spacing);
+	max-height: var(--canvas-size);
+	padding: var(--ui-spacing);
+	overflow-y: scroll;
+}
+
+#player-list {
+	border: 2px solid var(--outline);
+	border-radius: var(--ui-spacing);
+	list-style: none;
+}
+
+#player-list li {
+	width: 100%;
+	padding: var(--ui-spacing);
+}
+
+#player-list li:nth-child(odd) {
+	background-color: var(--outline);
+}
+
+#player-list li:first-child {
+	border-radius: var(--ui-border-radius) var(--ui-border-radius) 0 0;
+}
+
+#player-list li:last-child {
+	border-radius: 0 0 var(--ui-border-radius) var(--ui-border-radius);
+}
+
+
+#player-list li:first-child:last-child {
+	border-radius: var(--ui-border-radius);
 }

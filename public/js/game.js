@@ -1,42 +1,13 @@
 const socket = io()
 
-const cookieString = document.cookie
-const cookieArray = cookieString.split("; ")
-const cookieObject = {}
-
-const cookies = cookieArray.length
-for (let i = 0; i < cookies; i++) {
-	const keyAndValue = cookieArray[i].split("=")
-	const key = keyAndValue[0]
-	const value = keyAndValue[1]
-	cookieObject[key] = value
-}
-
-function getToken() { return cookieObject["token"] }
-
 socket.emit("game-join", getToken())
 
-socket.on("game-already-playing", () => {
-	window.location.href = "/already-playing"
-})
+const main          = document.querySelector("main")
 
-const playingStatus = document.querySelector("#playing-status")
-const playerCount = document.querySelector("#player-count")
-const playerList = document.querySelector("#player-list")
+const playerCount   = document.querySelector("#player-count")
+const playerList    = document.querySelector("#player-list")
 
-socket.on("game-lobby-change", (game) => {
-	playingStatus.innerHTML = game.playing
-	playerList.innerHTML = ""
-	let i = 0
-	Object.values(game.lobby).forEach((value) => {
-		i++
-		playerList.innerHTML += `<li>#${i} ${value}</li>`
-	})
-	playerCount.innerHTML = `Players Count: ${i}`
-})
-
-
-
+const canvas        = document.querySelector("#canvas")
 const background    = document.querySelector("#background")
 const backgroundCtx = background.getContext("2d")
 const foreground    = document.querySelector("#foreground")
@@ -74,6 +45,22 @@ const settings = {
 }
 
 let touchEnd = false
+
+function getToken() {
+	const cookieString = document.cookie
+	const cookieArray = cookieString.split("; ")
+	const cookieObject = {}
+
+	const cookies = cookieArray.length
+	for (let i = 0; i < cookies; i++) {
+		const keyAndValue = cookieArray[i].split("=")
+		const key = keyAndValue[0]
+		const value = keyAndValue[1]
+		cookieObject[key] = value
+	}
+
+	return cookieObject["token"]
+}
 
 function getSize(size) { return sizes[size] }
 
@@ -158,7 +145,7 @@ function toggleDOMsetting(setting) {
 }
 
 function selfClear() {
-	socket.emit("clear")
+	socket.emit("game-clear")
 	clearBackground()
 }
 
@@ -166,7 +153,11 @@ function selfDraw(position, dot = false) {
 	const size = getSize(settings.size)
 	const color = getColor(settings.color)
 	draw(size, color, position, dot)
-	socket.emit("draw", size, color, position, dot)
+	socket.emit("game-draw", size, color, position, dot)
+}
+
+function validDrawPosition(event) {
+	return event.target === background || event.target === main
 }
 
 window.onkeydown = (event) => {
@@ -175,7 +166,7 @@ window.onkeydown = (event) => {
 }
 
 window.onmousedown = (event) => {
-	if (!leftClicking(event)) { return }
+	if (!leftClicking(event) || !validDrawPosition(event)) { return }
 	selfDraw(clientToCanvasPosition(event.clientX, event.clientY, background), true)
 }
 
@@ -186,15 +177,17 @@ window.onmousemove = (event) => {
 	}
 	touchEnd = false
 
-	if (!leftClicking(event)) { return }
+	if (!leftClicking(event) || !validDrawPosition(event)) { return }
 	selfDraw(clientToCanvasPosition(event.clientX, event.clientY, background))
 }
 
 window.ontouchstart = (event) => {
+	if (!validDrawPosition(event)) { return }
 	selfDraw(clientToCanvasPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, background), true)
 }
 
 window.ontouchmove = (event) => {
+	if (!validDrawPosition(event)) { return }
 	selfDraw(clientToCanvasPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, background))
 }
 
@@ -203,6 +196,23 @@ window.ontouchend = () => {
 }
 
 document.body.onload = () => {
+	const menu = document.querySelector("#menu")
+	const menuItemTitles = document.querySelectorAll("#menu li p")
+	const dropDownSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 15.0006L7.75732 10.758L9.17154 9.34375L12 12.1722L14.8284 9.34375L16.2426 10.758L12 15.0006Z"></path></svg>`
+
+	menuItemTitles.forEach((title) => {
+		title.innerHTML += dropDownSVG
+
+		title.onclick = () => {
+			const parent = title.parentElement
+			const activeMenuItem = document.querySelector("#menu .active")
+			if (activeMenuItem && activeMenuItem != parent) {
+				activeMenuItem.classList.remove("active")
+			}
+			parent.classList.toggle("active")
+		}
+	})
+
 	const sizePicker   = document.querySelector("#size-picker")
 	const colorPalette = document.querySelector("#color-palette")
 
@@ -210,8 +220,6 @@ document.body.onload = () => {
 		sizePicker.innerHTML += `<div id="${size}" class="size"></div>`
 		const sizeDiv = document.querySelector("#" + size)
 		sizeDiv.style.setProperty("--size", getSize(size) + "px")
-		sizeDiv.style.width = getSize("large") + "px"
-		sizeDiv.style.height = getSize("large") + "px"
 	})
 
 	Object.keys(colors).forEach((color) => {
@@ -243,10 +251,24 @@ document.body.onload = () => {
 	selfClear() // temporary, this clears everyones backgrounds whenever someone new connects
 }
 
-socket.on("clear", () => {
+socket.on("game-clear", () => {
 	clearBackground()
 })
 
-socket.on("draw", (size, color, position, dot) => {
+socket.on("game-draw", (size, color, position, dot) => {
 	draw(size, color, position, dot)
+})
+
+socket.on("game-already-playing", () => {
+	window.location.href = "/already-playing"
+})
+
+socket.on("game-lobby-change", (game) => {
+	playerList.innerHTML = ""
+	let i = 0
+	Object.values(game.lobby).forEach((value) => {
+		i++
+		playerList.innerHTML += `<li>#${i} ${value}</li>`
+	})
+	playerCount.innerHTML = "Players: " + i
 })

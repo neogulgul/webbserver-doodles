@@ -8,6 +8,7 @@ ul {
 
 li {
 	--color: var(--error);
+	position: relative;
 	list-style: none;
 	color: var(--color);
 }

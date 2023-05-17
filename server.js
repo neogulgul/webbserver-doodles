@@ -131,7 +131,8 @@ app.get("/game", (req, res) => {
 		title: "Game",
 		css: ["game"],
 		js: ["game"],
-		socket: true
+		socket: true,
+		homeButton: true
 	})
 })
 
@@ -201,5 +202,13 @@ io.on("connection", (socket) => {
 
 		socket.join("game")
 		game.updateLobby(io)
+	})
+
+	socket.on("game-clear", () => {
+		socket.to("game").emit("game-clear")
+	})
+
+	socket.on("game-draw", (size, color, position, dot) => {
+		socket.to("game").emit("game-draw", size, color, position, dot)
 	})
 })
