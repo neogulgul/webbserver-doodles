@@ -27,6 +27,12 @@ main {
 	justify-content: center;
 }
 
+#game-status {
+	position: absolute;
+	bottom: calc(100% + var(--ui-spacing));
+	white-space: nowrap;
+}
+
 .ui-box {
 	border-radius: var(--ui-border-radius);
 	box-shadow: var(--shadow);
@@ -46,13 +52,48 @@ main {
 }
 
 /* ==================================================
+	canvas
+================================================== */
+
+.is-playing #canvas {
+	display: initial;
+}
+
+.is-current-drawer #canvas {
+	cursor: none;
+}
+
+#canvas {
+	position: relative;
+	display: none;
+	width: var(--canvas-size);
+	height: var(--canvas-size);
+	touch-action: none;
+}
+
+#canvas canvas {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	border-radius: inherit;
+}
+
+#foreground {
+	pointer-events: none;
+}
+
+/* ==================================================
 	menu
 ================================================== */
 
+.is-playing #menu {
+	display: flex;
+}
+
 #menu {
 	position: absolute;
-	bottom: calc(100% + var(--ui-spacing));
-	display: flex;
+	top: calc(100% + var(--ui-spacing));
+	display: none;
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: calc(var(--ui-spacing) * 3);
@@ -78,9 +119,9 @@ main {
 .menu-content {
 	position: fixed;
 	z-index: 100;
-	top: 0;
+	top: 100%;
 	left: 50%;
-	transform: translate(-50%, -100%);
+	transform: translate(-50%, 0);
 	opacity: 0;
 	transition: var(--transition);
 }
@@ -92,31 +133,16 @@ main {
 }
 
 /* ==================================================
-	canvas
+	palette
 ================================================== */
 
-#canvas {
-	position: relative;
-	width: var(--canvas-size);
-	height: var(--canvas-size);
-	cursor: none;
-	touch-action: none;
+#palette {
+	display: none;
 }
 
-#canvas canvas {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	border-radius: inherit;
+.is-current-drawer #palette {
+	display: initial;
 }
-
-#foreground {
-	pointer-events: none;
-}
-
-/* ==================================================
-	color-palette
-================================================== */
 
 #color-palette {
 	--color-size: 40px;
@@ -137,8 +163,16 @@ main {
 }
 
 /* ==================================================
-	size-picker
+	sizes
 ================================================== */
+
+#sizes {
+	display: none;
+}
+
+.is-current-drawer #sizes {
+	display: initial;
+}
 
 #size-picker {
 	--size-size: 64px;
@@ -175,7 +209,7 @@ main {
 	lobby
 ================================================== */
 
-#lobby {
+#lobby-container {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ui-spacing);
@@ -202,7 +236,7 @@ main {
 	chat
 ================================================== */
 
-#chat {
+#chat-container {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -229,8 +263,12 @@ main {
 	background-color: var(--outline);
 }
 
-input {
+#chat input {
 	border: 2px solid var(--outline);
 	outline: none;
 	padding: 5px;
+}
+
+.is-correct #chat input {
+	display: none;
 }

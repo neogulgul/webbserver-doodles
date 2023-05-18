@@ -14,11 +14,11 @@ function handleValidity() {
 }
 
 username.onkeyup = () => {
-	validUsername = username.value.length != 0
+	validUsername = username.value.length !== 0
 	handleValidity()
 }
 
 password.onkeyup = () => {
-	validPassword = password.value.length != 0
+	validPassword = password.value.length !== 0
 	handleValidity()
 }

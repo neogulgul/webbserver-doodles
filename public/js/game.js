@@ -4,17 +4,19 @@ socket.emit("game-join", getToken())
 
 const main          = document.querySelector("main")
 
-const playerCount   = document.querySelector("#player-count")
-const playerList    = document.querySelector("#player-list")
-
-const messages      = document.querySelector("#messages")
-const input         = document.querySelector("input")
+const gameStatus    = document.querySelector("#game-status")
 
 const canvas        = document.querySelector("#canvas")
 const background    = document.querySelector("#background")
 const backgroundCtx = background.getContext("2d")
 const foreground    = document.querySelector("#foreground")
 const foregroundCtx = foreground.getContext("2d")
+
+const playerCount   = document.querySelector("#player-count")
+const playerList    = document.querySelector("#player-list")
+
+const messages      = document.querySelector("#messages")
+const input         = document.querySelector("input")
 
 const canvasSize = { width: 1024, height: 1024 }
 background.width = canvasSize.width; background.height = canvasSize.height
@@ -210,7 +212,7 @@ document.body.onload = () => {
 		title.onclick = () => {
 			const parent = title.parentElement
 			const activeMenuItem = document.querySelector("#menu .active")
-			if (activeMenuItem && activeMenuItem != parent) {
+			if (activeMenuItem && activeMenuItem !== parent) {
 				activeMenuItem.classList.remove("active")
 			}
 			parent.classList.toggle("active")
@@ -311,10 +313,18 @@ socket.on("game-server-message", (message) => {
 
 socket.on("game-round-start", (drawerSocketId) => {
 	isCurrentDrawer = socket.id === drawerSocketId
+	document.body.classList.add("is-playing")
+	if (isCurrentDrawer) {
+		document.body.classList.add("is-current-drawer")
+	}
 })
 
 socket.on("game-round-end", () => {
 	isCurrentDrawer = false
+	const thingsToRemove = ["is-playing", "is-current-drawer", "is-correct"]
+	for (let i = 0; i < thingsToRemove.length; i++) {
+		document.body.classList.remove(thingsToRemove[i])
+	}
 	clearBackground()
 })
 
@@ -322,4 +332,12 @@ socket.on("game-load-canvas", (drawCommandsDuringRound) => {
 	drawCommandsDuringRound.forEach((command) => {
 		draw(command.size, command.color, command.position, command.dot)
 	})
+})
+
+socket.on("game-set-status", (statusMessage) => {
+	gameStatus.innerHTML = statusMessage
+})
+
+socket.on("game-correct-guess", () => {
+	document.body.classList.add("is-correct")
 })

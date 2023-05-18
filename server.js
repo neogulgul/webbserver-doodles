@@ -176,38 +176,55 @@ const game = {
 	drawer: undefined,
 	playerDrawQueue: [],
 	drawCommandsDuringRound: [],
+	correctPlayers: [],
+
 	addToLobby: (socketId, name) => {
 		game.lobby[socketId] = { id: game.lobbyCounter, name: name }
 		game.lobbyCounter++
 	},
+
 	getPlayerCount: () => {
 		return Object.keys(game.lobby).length
 	},
+
+	getValidPlayingPlayerCount: () => {
+		return game.getPlayerCount() >= 2
+	},
+
 	updatePlayingStatus: () => {
 		const playingBefore = game.playing
-		game.playing = game.getPlayerCount() >= 2
+		game.playing = game.getValidPlayingPlayerCount()
 
 		if (!game.playing && playingBefore) { game.endRound() }
 
 		if (game.playing && !playingBefore) { game.startRound() }
 	},
+
 	updateLobby: (io) => {
 		game.updatePlayingStatus()
 		io.in("game").emit("game-lobby-change", game)
-
-		console.log("Playing:", game.playing)
-		console.log(game.lobby[game.drawer])
-		if (game.lobby[game.drawer]) { console.log("Drawer:", game.getPlayerIdNameString(game.drawer)) }
-		console.log("Draw Queue:")
-		game.playerDrawQueue.forEach((socketId) => {
-			console.log(socketId)
-			console.log(`${game.getPlayerIdNameString(socketId)}`)
-		})
 	},
+
 	getPlayerIdNameString: (socketId) => {
 		const player = game.lobby[socketId]
 		return `#${player.id} ${player.name}`
 	},
+
+	getStatusMessage: (status) => {
+		switch (status) {
+			case "waiting":
+				return "Waiting for other players."
+			case "drawing":
+				return `You are drawing a ${game.word}.`
+			case "guessing":
+				return `${game.getPlayerIdNameString(game.drawer)} is drawing a ${game.word.length} letter word.`
+			case "correct":
+				return `You guessed the drawing by ${game.drawer} correctly! The word was ${game.word}.`
+			default:
+				return "ERROR."
+		}
+	},
+
 	startRound: () => {
 		const words = JSON.parse(fs.readFileSync("words.json", "utf-8"))
 		const index = random(0, words.length - 1)
@@ -217,7 +234,11 @@ const game = {
 		game.playerDrawQueue.shift()
 		io.in("game").emit("game-round-start", game.drawer)
 		io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(game.drawer)} is drawing.`)
+
+		io.in("game").emit("game-set-status", game.getStatusMessage("guessing"))
+		io.to(game.drawer).emit("game-set-status", game.getStatusMessage("drawing"))
 	},
+
 	endRound: () => {
 		game.playing = false
 		game.playerDrawQueue.push(game.drawer)
@@ -225,7 +246,11 @@ const game = {
 		game.word           = undefined
 		game.drawer         = undefined
 		game.drawCommandsDuringRound.length = 0
+		game.correctPlayers         .length = 0
 		io.in("game").emit("game-round-end")
+		io.in("game").emit("game-set-status", game.getStatusMessage("waiting"))
+
+		game.updatePlayingStatus()
 	}
 }
 
@@ -279,6 +304,9 @@ io.on("connection", (socket) => {
 
 		if (game.playing) {
 			socket.emit("game-load-canvas", game.drawCommandsDuringRound)
+			socket.emit("game-set-status", game.getStatusMessage("guessing"))
+		} else {
+			socket.emit("game-set-status", game.getStatusMessage("waiting"))
 		}
 	})
 
@@ -301,8 +329,22 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("game-player-message", (senderSocketId, message) => {
+		if (!game.playing || game.correctPlayers.includes[senderSocketId]) { return }
+
 		const   id = game.lobby[senderSocketId].id
 		const name = game.lobby[senderSocketId].name
-		io.in("game").emit("game-player-message", senderSocketId, id, name, message)
+
+		if (senderSocketId !== game.drawer && message === game.word) {
+			game.correctPlayers.push(senderSocketId)
+			io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(senderSocketId)} guessed correctly.`)
+			socket.emit("game-correct-guess")
+
+			const everyPlayerIsCorrect = game.getPlayerCount() - 1 === game.correctPlayers.length
+			if (everyPlayerIsCorrect) {
+				game.endRound()
+			}
+		} else {
+			io.in("game").emit("game-player-message", senderSocketId, id, name, message)
+		}
 	})
 })
