@@ -20,7 +20,8 @@ async function execute(statement) {
 		await connection.end()
 		return result[0]
 	} catch (err) {
-		console.log(err)
+		// console.log(err)
+		console.log("Error connecting to database.")
 		return false
 	}
 }

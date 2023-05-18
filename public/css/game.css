@@ -217,6 +217,7 @@ main {
 	border: 2px solid var(--outline);
 	overflow-y: scroll;
 	list-style: none;
+	scroll-behavior: smooth;
 }
 
 #messages li {

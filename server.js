@@ -4,11 +4,14 @@ const cookieParser = require("cookie-parser")
 const crypto       = require("crypto")
 const express      = require("express")
 const handlebars   = require("express-handlebars")
+const fs           = require("fs")
 const http         = require("http")
 const { Server }   = require("socket.io")
 // services
 const db           = require("./services/db")
 const jwt          = require("./services/jwt")
+
+function random(min, max) { return Math.floor(Math.random() * (max + 1 - min)) + min }
 
 function hash(data) {
 	const hash = crypto.createHash("sha256")
@@ -167,8 +170,12 @@ const game = {
 	playing: false,
 	lobby: {},
 	lobbyCounter: 0,
+	roundStartTime: undefined,
+	secondsPerRound: 120,
+	word: undefined,
 	drawer: undefined,
-	drawQueue: [],
+	playerDrawQueue: [],
+	drawCommandsDuringRound: [],
 	addToLobby: (socketId, name) => {
 		game.lobby[socketId] = { id: game.lobbyCounter, name: name }
 		game.lobbyCounter++
@@ -177,30 +184,63 @@ const game = {
 		return Object.keys(game.lobby).length
 	},
 	updatePlayingStatus: () => {
+		const playingBefore = game.playing
 		game.playing = game.getPlayerCount() >= 2
+
+		if (!game.playing && playingBefore) { game.endRound() }
+
+		if (game.playing && !playingBefore) { game.startRound() }
 	},
 	updateLobby: (io) => {
 		game.updatePlayingStatus()
 		io.in("game").emit("game-lobby-change", game)
 
-		console.clear()
+		console.log("Playing:", game.playing)
+		console.log(game.lobby[game.drawer])
+		if (game.lobby[game.drawer]) { console.log("Drawer:", game.getPlayerIdNameString(game.drawer)) }
 		console.log("Draw Queue:")
-		game.drawQueue.forEach((socketId) => {
-			const player = game.lobby[socketId]
-			console.log(`#${player.id} ${player.name}`)
+		game.playerDrawQueue.forEach((socketId) => {
+			console.log(socketId)
+			console.log(`${game.getPlayerIdNameString(socketId)}`)
 		})
+	},
+	getPlayerIdNameString: (socketId) => {
+		const player = game.lobby[socketId]
+		return `#${player.id} ${player.name}`
+	},
+	startRound: () => {
+		const words = JSON.parse(fs.readFileSync("words.json", "utf-8"))
+		const index = random(0, words.length - 1)
+		game.word = words[index]
+
+		game.drawer = game.playerDrawQueue[0]
+		game.playerDrawQueue.shift()
+		io.in("game").emit("game-round-start", game.drawer)
+		io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(game.drawer)} is drawing.`)
+	},
+	endRound: () => {
+		game.playing = false
+		game.playerDrawQueue.push(game.drawer)
+		game.roundStartTime = undefined
+		game.word           = undefined
+		game.drawer         = undefined
+		game.drawCommandsDuringRound.length = 0
+		io.in("game").emit("game-round-end")
 	}
 }
 
 io.on("connection", (socket) => {
 	socket.on("disconnect", () => {
 		if (Object.keys(game.lobby).includes(socket.id)) {
-			const player = game.lobby[socket.id]
-			socket.to("game").emit("game-server-message", `#${player.id} ${player.name} just left.`)
+			socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just left.`)
+
+			if (socket.id === game.drawer) {
+				game.endRound()
+			}
 
 			delete game.lobby[socket.id]
-			const drawQueueIndex = game.drawQueue.indexOf(socket.id)
-			game.drawQueue.splice(drawQueueIndex, 1)
+			const playerDrawQueueIndex = game.playerDrawQueue.indexOf(socket.id)
+			game.playerDrawQueue.splice(playerDrawQueueIndex, 1)
 			game.updateLobby(io)
 		}
 	})
@@ -232,20 +272,32 @@ io.on("connection", (socket) => {
 			game.addToLobby(socket.id, username)
 		}
 
+		socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just joined.`)
 		socket.join("game")
-		game.drawQueue.push(socket.id)
+		game.playerDrawQueue.push(socket.id)
 		game.updateLobby(io)
 
-		const player = game.lobby[socket.id]
-		socket.to("game").emit("game-server-message", `#${player.id} ${player.name} just joined.`)
+		if (game.playing) {
+			socket.emit("game-load-canvas", game.drawCommandsDuringRound)
+		}
 	})
 
-	socket.on("game-clear", () => {
-		socket.to("game").emit("game-clear")
+	socket.on("game-clear", (socketId) => {
+		if (socketId === game.drawer) {
+			io.in("game").emit("game-clear")
+		}
 	})
 
-	socket.on("game-draw", (size, color, position, dot) => {
-		socket.to("game").emit("game-draw", size, color, position, dot)
+	socket.on("game-draw", (socketId, size, color, position, dot) => {
+		if (socketId === game.drawer) {
+			game.drawCommandsDuringRound.push({
+				size: size,
+				color: color,
+				position: position,
+				dot: dot
+			})
+			io.in("game").emit("game-draw", size, color, position, dot)
+		}
 	})
 
 	socket.on("game-player-message", (senderSocketId, message) => {

@@ -47,6 +47,8 @@ const settings = {
 	color: "black"
 }
 
+let isCurrentDrawer = false
+
 let touchEnd = false
 
 function getToken() {
@@ -116,6 +118,8 @@ function draw(size, color, position, dot) {
 }
 
 function drawCursor(position) {
+	if (!isCurrentDrawer) { return }
+
 	const radius = getSize(settings.size) / 2
 	const color = getColor(settings.color)
 
@@ -148,15 +152,13 @@ function toggleDOMsetting(setting) {
 }
 
 function selfClear() {
-	socket.emit("game-clear")
-	clearBackground()
+	socket.emit("game-clear", socket.id)
 }
 
 function selfDraw(position, dot = false) {
 	const size = getSize(settings.size)
 	const color = getColor(settings.color)
-	draw(size, color, position, dot)
-	socket.emit("game-draw", size, color, position, dot)
+	socket.emit("game-draw", socket.id, size, color, position, dot)
 }
 
 function validDrawPosition(event) {
@@ -249,8 +251,6 @@ document.body.onload = () => {
 			toggleDOMsetting("color")
 		}
 	})
-
-	selfClear() // temporary, this clears everyones backgrounds whenever someone new connects
 }
 
 document.body.onclick = (event) => {
@@ -260,6 +260,7 @@ document.body.onclick = (event) => {
 	}
 }
 
+// send message
 input.onkeydown = (event) => {
 	if (input.value && event.key === "Enter") {
 		socket.emit("game-player-message", socket.id, input.value)
@@ -298,6 +299,7 @@ socket.on("game-lobby-change", (game) => {
 socket.on("game-player-message", (senderSocketId, id, name, message) => {
 	if (socket.id === senderSocketId) {
 		messages.innerHTML += `<li class="you">#${id} ${name} (you): ${message}</li>`
+		messages.scrollTop = messages.scrollHeight
 	} else {
 		messages.innerHTML += `<li>#${id} ${name}: ${message}</li>`
 	}
@@ -305,4 +307,19 @@ socket.on("game-player-message", (senderSocketId, id, name, message) => {
 
 socket.on("game-server-message", (message) => {
 	messages.innerHTML += `<li class="server">${message}</li>`
+})
+
+socket.on("game-round-start", (drawerSocketId) => {
+	isCurrentDrawer = socket.id === drawerSocketId
+})
+
+socket.on("game-round-end", () => {
+	isCurrentDrawer = false
+	clearBackground()
+})
+
+socket.on("game-load-canvas", (drawCommandsDuringRound) => {
+	drawCommandsDuringRound.forEach((command) => {
+		draw(command.size, command.color, command.position, command.dot)
+	})
 })

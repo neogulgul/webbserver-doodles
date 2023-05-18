@@ -26,7 +26,8 @@ async function verifyToken(token) {
 		const valid = result.length === 1
 		if (valid) { return decoded }
 	} catch (err) {
-		console.log(err)
+		// console.log(err)
+		console.log("Token was invalid.")
 	}
 
 	return false
