@@ -179,6 +179,13 @@ function validDrawPosition(event) {
 	return event.target === background || event.target === main
 }
 
+function closeActiveMenu(event) {
+	const activeMenuItem = document.querySelector("#menu .active")
+	if (activeMenuItem && !activeMenuItem.contains(event.target)) {
+		activeMenuItem.classList.remove("active")
+	}
+}
+
 window.onkeydown = (event) => {
 	if (document.activeElement === chatInput) { return }
 	const key = event.key.toLowerCase()
@@ -194,6 +201,7 @@ window.onkeydown = (event) => {
 
 window.onmousedown = (event) => {
 	if (!leftClicking(event) || !validDrawPosition(event)) { return }
+	closeActiveMenu(event)
 	selfDraw(clientToCanvasPosition(event.clientX, event.clientY, background), true)
 }
 
@@ -210,6 +218,7 @@ window.onmousemove = (event) => {
 
 window.ontouchstart = (event) => {
 	if (!validDrawPosition(event)) { return }
+	closeActiveMenu(event)
 	selfDraw(clientToCanvasPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, background), true)
 }
 
@@ -270,13 +279,6 @@ document.body.onload = () => {
 			toggleDOMsetting("color")
 		}
 	})
-
-	document.body.onclick = (event) => {
-		const activeMenuItem = document.querySelector("#menu .active")
-		if (activeMenuItem && !activeMenuItem.contains(event.target)) {
-			activeMenuItem.classList.remove("active")
-		}
-	}
 	
 	// send message
 	chatInput.onkeydown = (event) => {

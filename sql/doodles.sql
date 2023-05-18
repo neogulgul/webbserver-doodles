@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: May 03, 2023 at 08:15 PM
+-- Generation Time: May 18, 2023 at 04:37 PM
 -- Server version: 10.4.27-MariaDB
 -- PHP Version: 8.2.0
 
@@ -31,7 +31,9 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `username` varchar(30) NOT NULL,
   `password` varchar(64) NOT NULL,
-  `salt` varchar(8) NOT NULL
+  `salt` varchar(8) NOT NULL,
+  `wins` int(11) NOT NULL,
+  `correct_guesses` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --

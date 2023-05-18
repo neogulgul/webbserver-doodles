@@ -181,8 +181,8 @@ const game = {
 	roundDrawerCommands: [],
 	correctPlayers: [],
 
-	addToLobby: (socketId, name) => {
-		game.lobby[socketId] = { id: game.lobbyCounter, name: name }
+	addToLobby: (socketId, name, guest = false) => {
+		game.lobby[socketId] = { id: game.lobbyCounter, name: name, guest: guest }
 		game.lobbyCounter++
 	},
 
@@ -194,11 +194,11 @@ const game = {
 		return game.getPlayers().length >= 2
 	},
 
-	updatePlayingStatus: () => {
+	updatePlayingStatus: async () => {
 		const playingBefore = game.playing
 		game.playing = game.getValidPlayingPlayerCount()
 
-		if (!game.playing && playingBefore) { game.endRound() }
+		if (!game.playing && playingBefore) { await game.endRound() }
 
 		if (game.playing && !playingBefore) { game.startRound() }
 	},
@@ -210,6 +210,7 @@ const game = {
 
 	getPlayerIdNameString: (socketId) => {
 		const player = game.lobby[socketId]
+		if (!player) { return "NOT DEFINED" }
 		return `#${player.id} ${player.name}`
 	},
 
@@ -245,9 +246,13 @@ const game = {
 		game.roundStartTime = now.getTime()
 	},
 
-	endRound: () => {
+	endRound: async () => {
+		await game.givePointsToNonGuests()
+
 		game.playing = false
-		game.playerDrawQueue.push(game.drawer)
+		if (game.drawer) {
+			game.playerDrawQueue.push(game.drawer)
+		}
 		game.roundStartTime = undefined
 		game.word           = undefined
 		game.drawer         = undefined
@@ -256,11 +261,10 @@ const game = {
 		game.correctPlayers     .length = 0
 		io.in("game").emit("game-round-end")
 		io.in("game").emit("game-set-status", game.getStatusMessage("waiting"))
-
 		game.updatePlayingStatus()
 	},
 
-	validatePlayersCorrectness: () => {
+	validatePlayersCorrectness: async () => {
 		let everyPlayerIsCorrect = true
 
 		const players = game.getPlayers()
@@ -275,18 +279,43 @@ const game = {
 		}
 
 		if (everyPlayerIsCorrect) {
-			game.endRound()
+			await game.endRound()
 		}
+	},
+
+	givePointsToNonGuests: async () => {
+		let loopedThroughFirstPlayer = false
+		game.correctPlayers.forEach(async (socketId) => {
+			const player = game.lobby[socketId]
+			if (!player.guest) {
+				let sql = db.prepSQL("SELECT id, wins, correct_guesses FROM users WHERE username = ?", [player.name])
+				let result = await db.execute(sql)
+				if (!result) { console.log("Database error.") }
+				const id            = result[0].id
+				let wins            = result[0].wins
+				let correct_guesses = result[0].correct_guesses
+
+				if (!loopedThroughFirstPlayer) {
+					wins++
+				}
+				correct_guesses++
+
+				sql = db.prepSQL("UPDATE users SET wins = ?, correct_guesses = ? WHERE id = ?", [wins, correct_guesses, id])
+				result = await db.execute(sql)
+				if (!result) { console.log("Database error.") }
+			}
+			loopedThroughFirstPlayer = true
+		})
 	}
 }
 
 io.on("connection", (socket) => {
-	socket.on("disconnect", () => {
+	socket.on("disconnect", async () => {
 		if (game.getPlayers().includes(socket.id)) {
 			socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just left.`)
 
 			if (socket.id === game.drawer) {
-				game.endRound()
+				await game.endRound()
 			}
 
 			delete game.lobby[socket.id]
@@ -304,7 +333,7 @@ io.on("connection", (socket) => {
 		const username = decodedToken.username
 
 		if (username === undefined) {
-			game.addToLobby(socket.id, "guest")
+			game.addToLobby(socket.id, "guest", true)
 		} else {
 			let alreadyPlaying = false
 
@@ -391,7 +420,7 @@ io.on("connection", (socket) => {
 
 const interval = 0.1 // seconds
 
-setInterval(() => {
+setInterval(async () => {
 	if (game.playing) {
 		const now = new Date()
 		const millisecondsSinceRoundStart = now.getTime() - game.roundStartTime
@@ -399,7 +428,7 @@ setInterval(() => {
 		const timerPercentage = 100 * secondsSinceRoundStart / game.secondsPerRound
 		io.in("game").emit("game-update-timer", timerPercentage)
 		if (timerPercentage >= 100) {
-			game.endRound()
+			await game.endRound()
 		}
 	}
 }, interval * 1000)
