@@ -31,6 +31,19 @@ main {
 	position: absolute;
 	bottom: calc(100% + var(--ui-spacing));
 	white-space: nowrap;
+	text-align: center;
+}
+
+.is-playing #game-status {
+	white-space: normal;
+}
+
+.drawers-only {
+	display: none;
+}
+
+.is-current-drawer .drawers-only {
+	display: initial;
 }
 
 .ui-box {
@@ -133,16 +146,8 @@ main {
 }
 
 /* ==================================================
-	palette
+	color-palette
 ================================================== */
-
-#palette {
-	display: none;
-}
-
-.is-current-drawer #palette {
-	display: initial;
-}
 
 #color-palette {
 	--color-size: 40px;
@@ -163,16 +168,8 @@ main {
 }
 
 /* ==================================================
-	sizes
+	size-picker
 ================================================== */
-
-#sizes {
-	display: none;
-}
-
-.is-current-drawer #sizes {
-	display: initial;
-}
 
 #size-picker {
 	--size-size: 64px;
@@ -206,10 +203,25 @@ main {
 }
 
 /* ==================================================
+	clear-and-fill
+================================================== */
+
+#clear-and-fill {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ui-spacing);
+	padding: var(--ui-spacing);
+}
+
+#clear-and-fill button {
+	width: 100%;
+}
+
+/* ==================================================
 	lobby
 ================================================== */
 
-#lobby-container {
+#lobby {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ui-spacing);
@@ -236,7 +248,7 @@ main {
 	chat
 ================================================== */
 
-#chat-container {
+#chat {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -271,4 +283,34 @@ main {
 
 .is-correct #chat input {
 	display: none;
+}
+
+/* ==================================================
+	game-timer
+================================================== */
+
+.is-playing #game-timer {
+	display: initial;
+}
+
+#game-timer {
+	--percentage: 0%;
+	position: absolute;
+	left: calc(100% + var(--ui-spacing));
+	display: none;
+	width: 10px;
+	height: var(--canvas-size);
+	border: 2px solid var(--outline);
+}
+
+#game-timer::after {
+	position: absolute;
+	top: 100%;
+	transform: translateY(-100%);
+	content: "";
+	display: block;
+	width: 100%;
+	height: var(--percentage);
+	border-radius: inherit;
+	background: linear-gradient(135deg, rgba(255,166,200,1) 0%, rgba(255,198,159,1) 20%, rgba(255,252,185,1) 40%, rgba(162,252,154,1) 60%, rgba(164,227,255,1) 80%, rgba(235,156,245,1) 100%);
 }

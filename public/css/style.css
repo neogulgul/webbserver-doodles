@@ -125,6 +125,15 @@ a {
 	color: var(--main);
 }
 
+b {
+	font-size: inherit;
+	font-weight: bolder;
+}
+
+span {
+	font-size: inherit;
+}
+
 button {
 	--color: var(--main);
 	display: flex;
@@ -139,6 +148,7 @@ button {
 	fill: var(--color);
 	transition: var(--transition);
 	cursor: pointer;
+	white-space: nowrap;
 }
 
 button svg {

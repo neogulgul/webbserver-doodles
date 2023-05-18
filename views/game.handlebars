@@ -5,27 +5,35 @@
 		<canvas id="foreground"></canvas>
 	</div>
 	<ul id="menu">
-		<li id="palette">
+		<li class="drawers-only">
 			<p>Palette</p>
 			<div id="color-palette" class="ui-box menu-content"></div>
 		</li>
-		<li id="sizes">
+		<li class="drawers-only">
 			<p>Sizes</p>
 			<div id="size-picker" class="ui-box menu-content"></div>
 		</li>
-		<li id="lobby">
+		<li class="drawers-only">
+			<p>Clear &amp; Fill</p>
+			<div id="clear-and-fill" class="ui-box menu-content">
+				<button id="clear">Clear canvas [C]</button>
+				<button id="fill">Fill canvas [F]</button>
+			</div>
+		</li>
+		<li>
 			<p>Lobby</p>
-			<div id="lobby-container" class="ui-box menu-content">
+			<div id="lobby" class="ui-box menu-content">
 				<h2 id="player-count"></h2>
 				<ul id="player-list"></ul>
 			</div>
 		</li>
-		<li id="chat">
+		<li>
 			<p>Chat</p>
-			<div id="chat-container" class="ui-box menu-content">
+			<div id="chat" class="ui-box menu-content">
 				<ul id="messages"></ul>
 				<input type="text" placeholder="what could it be...">
 			</div>
 		</li>
 	</ul>
+	<div id="game-timer" class="ui-box"></div>
 </div>

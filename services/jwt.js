@@ -1,10 +1,7 @@
 const db = require("./db")
 const jwt = require("jsonwebtoken")
 
-const tokenHours = 24
-const tokenSecret = "ʕ •ᴥ•ʔ"
-
-function setToken(res, id, username) {
+function setToken(res, id, username, tokenSecret, tokenHours = 24) {
 	const token = jwt.sign({
 		sub: id,
 		username: username
@@ -12,7 +9,7 @@ function setToken(res, id, username) {
 	res.cookie("token", token)
 }
 
-async function verifyToken(token) {
+async function verifyToken(token, tokenSecret) {
 	if (token === undefined) { return false }
 
 	try {

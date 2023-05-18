@@ -12,11 +12,19 @@ const backgroundCtx = background.getContext("2d")
 const foreground    = document.querySelector("#foreground")
 const foregroundCtx = foreground.getContext("2d")
 
+const colorPalette  = document.querySelector("#color-palette")
+const sizePicker    = document.querySelector("#size-picker")
+
+const clearButton   = document.querySelector("#clear")
+const  fillButton   = document.querySelector("#fill")
+
 const playerCount   = document.querySelector("#player-count")
 const playerList    = document.querySelector("#player-list")
 
 const messages      = document.querySelector("#messages")
-const input         = document.querySelector("input")
+const chatInput     = document.querySelector("#chat input")
+
+const gameTimer     = document.querySelector("#game-timer")
 
 const canvasSize = { width: 1024, height: 1024 }
 background.width = canvasSize.width; background.height = canvasSize.height
@@ -77,9 +85,9 @@ function leftClicking(event) { return event.buttons === 1 }
 
 function clearForeground() { foregroundCtx.clearRect(0, 0, canvasSize.width, canvasSize.height) }
 
-function clearBackground() {
+function clearBackground(color = "white") {
 	backgroundCtx.beginPath()
-	backgroundCtx.fillStyle = colors.white
+	backgroundCtx.fillStyle = colors[color]
 	backgroundCtx.fillRect(0, 0, canvasSize.width, canvasSize.height)
 	backgroundCtx.fill()
 }
@@ -157,6 +165,10 @@ function selfClear() {
 	socket.emit("game-clear", socket.id)
 }
 
+function selfFill() {
+	socket.emit("game-fill", socket.id, settings.color)
+}
+
 function selfDraw(position, dot = false) {
 	const size = getSize(settings.size)
 	const color = getColor(settings.color)
@@ -168,8 +180,16 @@ function validDrawPosition(event) {
 }
 
 window.onkeydown = (event) => {
+	if (document.activeElement === chatInput) { return }
 	const key = event.key.toLowerCase()
-	if (key === "c") { selfClear() }
+	switch (key) {
+		case "c":
+			selfClear()
+			break
+		case "f":
+			selfFill()
+			break
+	}
 }
 
 window.onmousedown = (event) => {
@@ -219,9 +239,6 @@ document.body.onload = () => {
 		}
 	})
 
-	const sizePicker   = document.querySelector("#size-picker")
-	const colorPalette = document.querySelector("#color-palette")
-
 	Object.keys(sizes).forEach((size) => {
 		sizePicker.innerHTML += `<div id="${size}" class="size"></div>`
 		const sizeDiv = document.querySelector("#" + size)
@@ -253,25 +270,41 @@ document.body.onload = () => {
 			toggleDOMsetting("color")
 		}
 	})
-}
 
-document.body.onclick = (event) => {
-	const activeMenuItem = document.querySelector("#menu .active")
-	if (activeMenuItem && !activeMenuItem.contains(event.target)) {
-		activeMenuItem.classList.remove("active")
+	document.body.onclick = (event) => {
+		const activeMenuItem = document.querySelector("#menu .active")
+		if (activeMenuItem && !activeMenuItem.contains(event.target)) {
+			activeMenuItem.classList.remove("active")
+		}
+	}
+	
+	// send message
+	chatInput.onkeydown = (event) => {
+		if (chatInput.value && event.key === "Enter") {
+			socket.emit("game-player-message", socket.id, chatInput.value)
+			chatInput.value = ""
+		}
+	}
+
+	clearButton.onclick = () => {
+		selfClear()
+	}
+
+	fillButton.onclick = () => {
+		selfFill()
 	}
 }
 
-// send message
-input.onkeydown = (event) => {
-	if (input.value && event.key === "Enter") {
-		socket.emit("game-player-message", socket.id, input.value)
-		input.value = ""
-	}
-}
+// socket.io stuff ↓
+// socket.io stuff ↓
+// socket.io stuff ↓
 
 socket.on("game-clear", () => {
 	clearBackground()
+})
+
+socket.on("game-fill", (color) => {
+	clearBackground(color)
 })
 
 socket.on("game-draw", (size, color, position, dot) => {
@@ -311,7 +344,7 @@ socket.on("game-server-message", (message) => {
 	messages.innerHTML += `<li class="server">${message}</li>`
 })
 
-socket.on("game-round-start", (drawerSocketId) => {
+socket.on("game-round-start", (drawerSocketId = undefined) => {
 	isCurrentDrawer = socket.id === drawerSocketId
 	document.body.classList.add("is-playing")
 	if (isCurrentDrawer) {
@@ -340,4 +373,8 @@ socket.on("game-set-status", (statusMessage) => {
 
 socket.on("game-correct-guess", () => {
 	document.body.classList.add("is-correct")
+})
+
+socket.on("game-update-timer", (percentage) => {
+	gameTimer.style.setProperty("--percentage", percentage + "%")
 })

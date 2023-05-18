@@ -23,6 +23,8 @@ function databaseError(res) {
 	res.status(503).render("error", { error: "Error connecting to database." })
 }
 
+const tokenSecret = hash("ʕ •ᴥ•ʔ")
+
 const port = 3000
 
 const app = express()
@@ -43,7 +45,7 @@ app.engine("handlebars", handlebars.engine({
 app.get("/", async (req, res) => {
 	let username = ""
 	const token = req.cookies["token"]
-	const decodedToken = await jwt.verifyToken(token)
+	const decodedToken = await jwt.verifyToken(token, tokenSecret)
 	const validToken = decodedToken !== false
 	if (validToken) { username = decodedToken.username }
 
@@ -100,7 +102,7 @@ app.post("/sign-in", async (req, res) => {
 
 		if (valid) {
 			const user = result[0]
-			jwt.setToken(res, user.id, user.username)
+			jwt.setToken(res, user.id, user.username, tokenSecret)
 		}
 	}
 
@@ -123,7 +125,7 @@ app.post("/sign-up", async (req, res) => {
 		sql = db.prepSQL("INSERT INTO users (username, password, salt) VALUES (?, ?, ?)", [username, hashedPassword, salt])
 		result = await db.execute(sql)
 		if (!result) { databaseError(res); return }
-		jwt.setToken(res, result.insertId, username)
+		jwt.setToken(res, result.insertId, username, tokenSecret)
 	}
 
 	valid ? res.redirect("/") : res.redirect("/sign-up?error=true")
@@ -147,7 +149,7 @@ app.get("/already-playing", (req, res) => {
 
 app.get("/profile", async (req, res) => {
 	const token = req.cookies["token"]
-	const decodedToken = await jwt.verifyToken(token)
+	const decodedToken = await jwt.verifyToken(token, tokenSecret)
 	const validToken = decodedToken !== false
 
 	res.render("profile", {
@@ -171,11 +173,12 @@ const game = {
 	lobby: {},
 	lobbyCounter: 0,
 	roundStartTime: undefined,
-	secondsPerRound: 120,
+	secondsPerRound: 60,
 	word: undefined,
 	drawer: undefined,
 	playerDrawQueue: [],
-	drawCommandsDuringRound: [],
+	roundFillColor: undefined,
+	roundDrawerCommands: [],
 	correctPlayers: [],
 
 	addToLobby: (socketId, name) => {
@@ -183,12 +186,12 @@ const game = {
 		game.lobbyCounter++
 	},
 
-	getPlayerCount: () => {
-		return Object.keys(game.lobby).length
+	getPlayers: () => {
+		return Object.keys(game.lobby)
 	},
 
 	getValidPlayingPlayerCount: () => {
-		return game.getPlayerCount() >= 2
+		return game.getPlayers().length >= 2
 	},
 
 	updatePlayingStatus: () => {
@@ -215,11 +218,11 @@ const game = {
 			case "waiting":
 				return "Waiting for other players."
 			case "drawing":
-				return `You are drawing a ${game.word}.`
+				return `<span class="you">You are drawing "${game.word}".</span>`
 			case "guessing":
-				return `${game.getPlayerIdNameString(game.drawer)} is drawing a ${game.word.length} letter word.`
+				return `<b>${game.getPlayerIdNameString(game.drawer)}</b> is drawing a ${game.word.length} letter word.`
 			case "correct":
-				return `You guessed the drawing by ${game.drawer} correctly! The word was ${game.word}.`
+				return `You guessed the drawing by <b>${game.getPlayerIdNameString(game.drawer)}</b> correctly! The word was "${game.word}".`
 			default:
 				return "ERROR."
 		}
@@ -237,6 +240,9 @@ const game = {
 
 		io.in("game").emit("game-set-status", game.getStatusMessage("guessing"))
 		io.to(game.drawer).emit("game-set-status", game.getStatusMessage("drawing"))
+
+		const now = new Date()
+		game.roundStartTime = now.getTime()
 	},
 
 	endRound: () => {
@@ -245,18 +251,38 @@ const game = {
 		game.roundStartTime = undefined
 		game.word           = undefined
 		game.drawer         = undefined
-		game.drawCommandsDuringRound.length = 0
-		game.correctPlayers         .length = 0
+		game.roundFillColor = undefined
+		game.roundDrawerCommands.length = 0
+		game.correctPlayers     .length = 0
 		io.in("game").emit("game-round-end")
 		io.in("game").emit("game-set-status", game.getStatusMessage("waiting"))
 
 		game.updatePlayingStatus()
+	},
+
+	validatePlayersCorrectness: () => {
+		let everyPlayerIsCorrect = true
+
+		const players = game.getPlayers()
+
+		for (let i = 0; i < players.length; i++) {
+			const player = players[i]
+			if (player === game.drawer) { continue }
+			if (!game.correctPlayers.includes(player)) {
+				everyPlayerIsCorrect = false
+				break
+			}
+		}
+
+		if (everyPlayerIsCorrect) {
+			game.endRound()
+		}
 	}
 }
 
 io.on("connection", (socket) => {
 	socket.on("disconnect", () => {
-		if (Object.keys(game.lobby).includes(socket.id)) {
+		if (game.getPlayers().includes(socket.id)) {
 			socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just left.`)
 
 			if (socket.id === game.drawer) {
@@ -267,11 +293,13 @@ io.on("connection", (socket) => {
 			const playerDrawQueueIndex = game.playerDrawQueue.indexOf(socket.id)
 			game.playerDrawQueue.splice(playerDrawQueueIndex, 1)
 			game.updateLobby(io)
+
+			game.validatePlayersCorrectness()
 		}
 	})
 
 	socket.on("game-join", async (token) => {
-		const decodedToken = await jwt.verifyToken(token)
+		const decodedToken = await jwt.verifyToken(token, tokenSecret)
 
 		const username = decodedToken.username
 
@@ -303,7 +331,11 @@ io.on("connection", (socket) => {
 		game.updateLobby(io)
 
 		if (game.playing) {
-			socket.emit("game-load-canvas", game.drawCommandsDuringRound)
+			socket.emit("game-round-start")
+			if (game.roundFillColor) {
+				socket.emit("game-fill", game.roundFillColor)
+			}
+			socket.emit("game-load-canvas", game.roundDrawerCommands)
 			socket.emit("game-set-status", game.getStatusMessage("guessing"))
 		} else {
 			socket.emit("game-set-status", game.getStatusMessage("waiting"))
@@ -311,14 +343,24 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("game-clear", (socketId) => {
-		if (socketId === game.drawer) {
-			io.in("game").emit("game-clear")
-		}
+		if (socketId !== game.drawer) { return }
+
+		game.roundDrawerCommands.length = 0
+		game.roundFillColor = undefined
+		io.in("game").emit("game-clear")
+	})
+
+	socket.on("game-fill", (socketId, color) => {
+		if (socketId !== game.drawer) { return }
+
+		game.roundDrawerCommands.length = 0
+		game.roundFillColor = color
+		io.in("game").emit("game-fill", color)
 	})
 
 	socket.on("game-draw", (socketId, size, color, position, dot) => {
 		if (socketId === game.drawer) {
-			game.drawCommandsDuringRound.push({
+			game.roundDrawerCommands.push({
 				size: size,
 				color: color,
 				position: position,
@@ -337,14 +379,27 @@ io.on("connection", (socket) => {
 		if (senderSocketId !== game.drawer && message === game.word) {
 			game.correctPlayers.push(senderSocketId)
 			io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(senderSocketId)} guessed correctly.`)
+			socket.emit("game-set-status", game.getStatusMessage("correct"))
 			socket.emit("game-correct-guess")
 
-			const everyPlayerIsCorrect = game.getPlayerCount() - 1 === game.correctPlayers.length
-			if (everyPlayerIsCorrect) {
-				game.endRound()
-			}
+			game.validatePlayersCorrectness()
 		} else {
 			io.in("game").emit("game-player-message", senderSocketId, id, name, message)
 		}
 	})
 })
+
+const interval = 0.1 // seconds
+
+setInterval(() => {
+	if (game.playing) {
+		const now = new Date()
+		const millisecondsSinceRoundStart = now.getTime() - game.roundStartTime
+		const secondsSinceRoundStart = millisecondsSinceRoundStart / 1000
+		const timerPercentage = 100 * secondsSinceRoundStart / game.secondsPerRound
+		io.in("game").emit("game-update-timer", timerPercentage)
+		if (timerPercentage >= 100) {
+			game.endRound()
+		}
+	}
+}, interval * 1000)
