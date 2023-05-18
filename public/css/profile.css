@@ -1,0 +1,23 @@
+.profile-picture {
+	--size: 200px;
+}
+
+form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--text-spacing);
+	width: 100%;
+	max-width: 300px;
+}
+
+label {
+	text-align: center;
+}
+
+input[type="submit"], input[type="file"]::file-selector-button {
+	padding: 5px 15px;
+	border: 2px solid var(--outline);
+	border-radius: var(--radius);
+	background-color: var(--background);
+	font-family: "Nunito";
+}

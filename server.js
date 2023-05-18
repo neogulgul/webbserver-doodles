@@ -3,13 +3,15 @@ const bodyParser   = require("body-parser")
 const cookieParser = require("cookie-parser")
 const crypto       = require("crypto")
 const express      = require("express")
-const handlebars   = require("express-handlebars")
+const formidable   = require("formidable")
 const fs           = require("fs")
+const handlebars   = require("express-handlebars")
 const http         = require("http")
 const { Server }   = require("socket.io")
 // services
 const db           = require("./services/db")
 const jwt          = require("./services/jwt")
+const { decode } = require("punycode")
 
 function random(min, max) { return Math.floor(Math.random() * (max + 1 - min)) + min }
 
@@ -22,6 +24,46 @@ function hash(data) {
 function databaseError(res) {
 	res.status(503).render("error", { error: "Error connecting to database." })
 }
+
+function bytesToMegabytes(bytes) {
+	return bytes / (1000 * 1000)
+}
+
+function validateSignUpInput(input) {
+	let validInput = true
+
+	for (let i = 0; i < input.length; i++) {
+		const letter = input[i]
+		const inNumbers = allowedSignUpInputCharacters.numbers.includes(letter)
+		if (inNumbers) { continue }
+
+		const inAlphabet = allowedSignUpInputCharacters.alphabet.includes(letter)
+		if (inAlphabet) { continue }
+
+		const inSpecial = allowedSignUpInputCharacters.special.includes(letter)
+		if (inSpecial) { continue }
+
+		validInput = false
+	}
+
+	return validInput
+}
+
+const allowedSignUpInputCharacters = {
+	numbers: [
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+	],
+	alphabet: [
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "L", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "Å", "Ä", "Ö",
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "å", "ä", "ö"
+	],
+	special: [
+		"!", "?", "@", "£", "$", "%", "&", "=", "+", "-", "_"
+	]
+}
+
+const profilePictureAllowedFormats = ["jpg", "jpeg", "png", "gif"]
+const profilePictureMaxFilesize = 5 // MB
 
 const tokenSecret = hash("ʕ •ᴥ•ʔ")
 
@@ -113,6 +155,25 @@ app.post("/sign-up", async (req, res) => {
 	const username = req.body.username
 	const password = req.body.password
 
+	const validUsername = validateSignUpInput(username)
+	const validPassword = validateSignUpInput(password)
+
+	if (!validUsername || !validPassword) {
+		let errorText = "You username and password are only allowed to contain the following characters: "
+		let firstCharacter = true
+		Object.keys(allowedSignUpInputCharacters).forEach((key) => {
+			const characterArray = allowedSignUpInputCharacters[key]
+			characterArray.forEach((character) => {
+				firstCharacter ? errorText += character : errorText += ", " + character
+
+				if (firstCharacter) { firstCharacter = false }
+			})
+		})
+
+		res.status(400).render("error", { error: errorText })
+		return
+	}
+
 	let sql = db.prepSQL("SELECT * FROM users WHERE username = ?", [username])
 	let result = await db.execute(sql)
 	if (!result) { databaseError(res); return }
@@ -152,10 +213,73 @@ app.get("/profile", async (req, res) => {
 	const decodedToken = await jwt.verifyToken(token, tokenSecret)
 	const validToken = decodedToken !== false
 
+	let profilePicturePath = false
+
+	if (validToken) {
+		fs.readdirSync(__dirname + "/public/assets/images/profile-pictures/").forEach((file) => {
+			const name = file.split(".")[0]
+			if (name === decodedToken.username) {
+				profilePicturePath = file
+			}
+		})
+	}
+
 	res.render("profile", {
 		title: "Profile",
+		css: ["profile"],
 		nav: true,
-		loggedIn: validToken
+		loggedIn: validToken,
+		profilePicturePath: profilePicturePath
+	})
+})
+
+app.post("/upload-profile-picture", async (req, res) => {
+	const token = req.cookies["token"]
+	const decodedToken = await jwt.verifyToken(token, tokenSecret)
+	const validToken = decodedToken !== false
+	if (!validToken) {
+		res.status(401).render("error", { error: "Unauthorized." })
+	}
+
+	const username = decodedToken.username
+
+	const form = formidable()
+
+	form.parse(req, (error, fields, file) => {
+		if (error) { throw error }
+		const tmpPath  = file["profile-picture"].filepath
+		const filename = file["profile-picture"].originalFilename
+		const filesize = file["profile-picture"].size
+
+		const format = filename.split(".")[1]
+
+		if (!profilePictureAllowedFormats.includes(format)) {
+			let allowedFormatString = ""
+			for (let i = 0; i < profilePictureAllowedFormats.length; i++) {
+				allowedFormatString += profilePictureAllowedFormats[i]
+				if (i < profilePictureAllowedFormats.length - 1) {
+					allowedFormatString += ", "
+				}
+			}
+			res.status(400).render("error", { error: "File in wrong format. Your profile picture must be in one of these formats: " + allowedFormatString + "."})
+			return
+		}
+
+		if (bytesToMegabytes(filesize) > profilePictureMaxFilesize) {
+			res.status(400).render("error", { error: "File too large. Files must be under 5 MB." })
+			return
+		}
+
+		fs.readdirSync(__dirname + "/public/assets/images/profile-pictures/").forEach((file) => {
+			const name = file.split(".")[0]
+			if (name === username) {
+				fs.unlinkSync(__dirname + "/public/assets/images/profile-pictures/" + file)
+			}
+		})
+
+		const newPath = __dirname + "/public/assets/images/profile-pictures/" + username + "." + format
+		fs.writeFileSync(newPath, fs.readFileSync(tmpPath))
+		res.redirect("/profile")
 	})
 })
 

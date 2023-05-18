@@ -19,9 +19,8 @@ async function execute(statement) {
 		const result = await connection.execute(statement)
 		await connection.end()
 		return result[0]
-	} catch (err) {
-		// console.log(err)
-		console.log("Error connecting to database.")
+	} catch (error) {
+		console.log(error)
 		return false
 	}
 }
