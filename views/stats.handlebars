@@ -1,0 +1,23 @@
+<h1>Stats</h1>
+<div id="table-container">
+	<table>
+		<thead>
+			<tr>
+				<th>Username</th>
+				<th>Games played</th>
+				<th>Correct guesses on others</th>
+				<th>Correct guesses from others</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{#each stats}}
+			<tr>
+				<td>{{this.username}}</td>
+				<td>{{this.games_played}}</td>
+				<td>{{this.correct_guesses_on_others}}</td>
+				<td>{{this.correct_guesses_from_others}}</td>
+			</tr>
+			{{/each}}
+		</tbody>
+	</table>
+</div>

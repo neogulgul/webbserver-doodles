@@ -1,5 +1,10 @@
 <h1>Profile</h1>
 {{#if loggedIn}}
+	<p>Username: {{username}}</p>
+	<p>Signed up: {{signUpDate}}</p>
+	<p>Games played: {{games_played}}</p>
+	<p>Correct guesses on others: {{correct_guesses_on_others}}</p>
+	<p>Correct guesses from others: {{correct_guesses_from_others}}</p>
 	{{#if profilePicturePath}}
 	<img class="profile-picture" src="assets/images/profile-pictures/{{profilePicturePath}}">
 	{{else}}

@@ -1,2 +1,0 @@
-limit the characters for new usernames and passwords
-fix leaderboard and shit

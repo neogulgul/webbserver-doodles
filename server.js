@@ -49,6 +49,17 @@ function validateSignUpInput(input) {
 	return validInput
 }
 
+function makingSureProfilePicturesDirectoryExists() {
+	if (fs.existsSync(profilePicturesDirectory)) {
+		if (!fs.statSync(profilePicturesDirectory).isDirectory()) {
+			fs.unlinkSync(profilePicturesDirectory)
+			fs.mkdirSync(profilePicturesDirectory)
+		}
+	} else {
+		fs.mkdirSync(profilePicturesDirectory)
+	}
+}
+
 const allowedSignUpInputCharacters = {
 	numbers: [
 		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
@@ -62,8 +73,9 @@ const allowedSignUpInputCharacters = {
 	]
 }
 
-const profilePictureAllowedFormats = ["jpg", "jpeg", "png", "gif"]
-const profilePictureMaxFilesize = 5 // MB
+const profilePicturesAllowedFormats = ["jpg", "jpeg", "png", "gif"]
+const profilePicturesMaxFilesize = 5 // MB
+const profilePicturesDirectory = __dirname + "/public/assets/images/profile-pictures/"
 
 const tokenSecret = hash("ʕ •ᴥ•ʔ")
 
@@ -85,7 +97,7 @@ app.engine("handlebars", handlebars.engine({
 }))
 
 app.get("/", async (req, res) => {
-	let username = ""
+	let username = undefined
 	const token = req.cookies["token"]
 	const decodedToken = await jwt.verifyToken(token, tokenSecret)
 	const validToken = decodedToken !== false
@@ -126,7 +138,14 @@ app.get("/sign-up", (req, res) => {
 app.post("/sign-in", async (req, res) => {
 	const username = req.body.username
 	
-	let sql = db.prepSQL("SELECT salt FROM users WHERE username = ?", [username])
+	let sql = db.prepSQL(`
+	SELECT
+		salt
+	FROM
+		users
+	WHERE
+		username = ?
+	`, [username])
 	let result = await db.execute(sql)
 	if (!result) { databaseError(res); return }
 
@@ -136,7 +155,14 @@ app.post("/sign-in", async (req, res) => {
 		const salt = result[0].salt
 		const hashedPassword = hash(salt + req.body.password)
 
-		sql = db.prepSQL("SELECT * FROM users WHERE username = ? AND password = ?", [username, hashedPassword])
+		sql = db.prepSQL(`
+		SELECT
+			*
+		FROM
+			users
+		WHERE
+			username = ? AND password = ?
+		`, [username, hashedPassword])
 		result = await db.execute(sql)
 		if (!result) { databaseError(res); return }
 
@@ -174,7 +200,14 @@ app.post("/sign-up", async (req, res) => {
 		return
 	}
 
-	let sql = db.prepSQL("SELECT * FROM users WHERE username = ?", [username])
+	let sql = db.prepSQL(`
+	SELECT
+		*
+	FROM
+		users
+	WHERE
+		username = ?
+	`, [username])
 	let result = await db.execute(sql)
 	if (!result) { databaseError(res); return }
 
@@ -183,7 +216,12 @@ app.post("/sign-up", async (req, res) => {
 	if (valid) {
 		const salt = crypto.randomBytes(4).toString("hex")
 		const hashedPassword = hash(salt + password)
-		sql = db.prepSQL("INSERT INTO users (username, password, salt) VALUES (?, ?, ?)", [username, hashedPassword, salt])
+		sql = db.prepSQL(`
+		INSERT INTO
+			users (username, password, salt)
+		VALUES
+			(?, ?, ?)
+		`, [username, hashedPassword, salt])
 		result = await db.execute(sql)
 		if (!result) { databaseError(res); return }
 		jwt.setToken(res, result.insertId, username, tokenSecret)
@@ -213,10 +251,36 @@ app.get("/profile", async (req, res) => {
 	const decodedToken = await jwt.verifyToken(token, tokenSecret)
 	const validToken = decodedToken !== false
 
+	let username                    = undefined
+	let signUpDate                  = undefined
+	let games_played                = undefined
+	let correct_guesses_on_others   = undefined
+	let correct_guesses_from_others = undefined
+
 	let profilePicturePath = false
 
 	if (validToken) {
-		fs.readdirSync(__dirname + "/public/assets/images/profile-pictures/").forEach((file) => {
+		username = decodedToken.username
+
+		const sql = db.prepSQL(`
+		SELECT
+			sign_up_date, games_played, correct_guesses_on_others, correct_guesses_from_others
+		FROM
+			users
+		WHERE
+			username = ?
+		`, [username])
+		const result = await db.execute(sql)
+		if (!result) { databaseError(res); return }
+
+		signUpDate                  = result[0].sign_up_date.toDateString()
+		games_played                = result[0].games_played
+		correct_guesses_on_others   = result[0].correct_guesses_on_others
+		correct_guesses_from_others = result[0].correct_guesses_from_others
+
+		makingSureProfilePicturesDirectoryExists()
+
+		fs.readdirSync(profilePicturesDirectory).forEach((file) => {
 			const name = file.split(".")[0]
 			if (name === decodedToken.username) {
 				profilePicturePath = file
@@ -229,6 +293,11 @@ app.get("/profile", async (req, res) => {
 		css: ["profile"],
 		nav: true,
 		loggedIn: validToken,
+		username: username,
+		signUpDate: signUpDate,
+		games_played: games_played,
+		correct_guesses_on_others: correct_guesses_on_others,
+		correct_guesses_from_others: correct_guesses_from_others,
 		profilePicturePath: profilePicturePath
 	})
 })
@@ -253,11 +322,11 @@ app.post("/upload-profile-picture", async (req, res) => {
 
 		const format = filename.split(".")[1]
 
-		if (!profilePictureAllowedFormats.includes(format)) {
+		if (!profilePicturesAllowedFormats.includes(format)) {
 			let allowedFormatString = ""
-			for (let i = 0; i < profilePictureAllowedFormats.length; i++) {
-				allowedFormatString += profilePictureAllowedFormats[i]
-				if (i < profilePictureAllowedFormats.length - 1) {
+			for (let i = 0; i < profilePicturesAllowedFormats.length; i++) {
+				allowedFormatString += profilePicturesAllowedFormats[i]
+				if (i < profilePicturesAllowedFormats.length - 1) {
 					allowedFormatString += ", "
 				}
 			}
@@ -265,19 +334,21 @@ app.post("/upload-profile-picture", async (req, res) => {
 			return
 		}
 
-		if (bytesToMegabytes(filesize) > profilePictureMaxFilesize) {
+		if (bytesToMegabytes(filesize) > profilePicturesMaxFilesize) {
 			res.status(400).render("error", { error: "File too large. Files must be under 5 MB." })
 			return
 		}
 
-		fs.readdirSync(__dirname + "/public/assets/images/profile-pictures/").forEach((file) => {
+		makingSureProfilePicturesDirectoryExists()
+
+		fs.readdirSync(profilePicturesDirectory).forEach((file) => {
 			const name = file.split(".")[0]
 			if (name === username) {
-				fs.unlinkSync(__dirname + "/public/assets/images/profile-pictures/" + file)
+				fs.unlinkSync(profilePicturesDirectory + file)
 			}
 		})
 
-		const newPath = __dirname + "/public/assets/images/profile-pictures/" + username + "." + format
+		const newPath = profilePicturesDirectory + username + "." + format
 		fs.writeFileSync(newPath, fs.readFileSync(tmpPath))
 		res.redirect("/profile")
 	})
@@ -286,6 +357,24 @@ app.post("/upload-profile-picture", async (req, res) => {
 app.get("/sign-out", (req, res) => {
 	res.clearCookie("token")
 	res.redirect("/")
+})
+
+app.get("/stats", async (req, res) => {
+	const sql = `
+	SELECT
+		username, games_played, correct_guesses_on_others, correct_guesses_from_others
+	FROM
+		users
+	`
+	const result = await db.execute(sql)
+	if (!result) { databaseError(res); return }
+
+	res.render("stats", {
+		title: "stats",
+		css: ["stats"],
+		nav: true,
+		stats: result
+	})
 })
 
 server.listen(port, () => {
@@ -371,7 +460,7 @@ const game = {
 	},
 
 	endRound: async () => {
-		await game.givePointsToNonGuests()
+		await game.updatePlayerProfiles()
 
 		game.playing = false
 		if (game.drawer) {
@@ -407,29 +496,51 @@ const game = {
 		}
 	},
 
-	givePointsToNonGuests: async () => {
-		let loopedThroughFirstPlayer = false
-		game.correctPlayers.forEach(async (socketId) => {
+	updatePlayerProfiles: async () => {
+		const players = Object.keys(game.lobby)
+
+		for (let i = 0; i < players.length; i++) {
+			const socketId = players[i]
 			const player = game.lobby[socketId]
 			if (!player.guest) {
-				let sql = db.prepSQL("SELECT id, wins, correct_guesses FROM users WHERE username = ?", [player.name])
+				const wasDrawer = socketId === game.drawer
+
+				let sql = db.prepSQL(`
+				SELECT
+					id, games_played, correct_guesses_on_others, correct_guesses_from_others
+				FROM
+					users
+				WHERE
+					username = ?
+				`, [player.name])
 				let result = await db.execute(sql)
 				if (!result) { console.log("Database error.") }
-				const id            = result[0].id
-				let wins            = result[0].wins
-				let correct_guesses = result[0].correct_guesses
 
-				if (!loopedThroughFirstPlayer) {
-					wins++
+				const id                        = result[0].id
+				let games_played                = result[0].games_played
+				let correct_guesses_on_others   = result[0].correct_guesses_on_others
+				let correct_guesses_from_others = result[0].correct_guesses_from_others
+
+				games_played++
+				if (game.correctPlayers.includes(socketId)) {
+					correct_guesses_on_others++
 				}
-				correct_guesses++
+				if (wasDrawer) {
+					correct_guesses_from_others += game.correctPlayers.length
+				}
 
-				sql = db.prepSQL("UPDATE users SET wins = ?, correct_guesses = ? WHERE id = ?", [wins, correct_guesses, id])
+				sql = db.prepSQL(`
+				UPDATE
+					users
+				SET
+					games_played = ?, correct_guesses_on_others = ?, correct_guesses_from_others = ?
+				WHERE
+					id = ?
+				`, [games_played, correct_guesses_on_others, correct_guesses_from_others, id])
 				result = await db.execute(sql)
 				if (!result) { console.log("Database error.") }
 			}
-			loopedThroughFirstPlayer = true
-		})
+		}
 	}
 }
 
