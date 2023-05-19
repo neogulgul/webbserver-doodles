@@ -1,19 +1,16 @@
 <h1>Profile</h1>
 {{#if loggedIn}}
 	<p>Username: {{username}}</p>
-	<p>Signed up: {{signUpDate}}</p>
+	<p>Sign up date: {{signUpDate}}</p>
 	<p>Games played: {{games_played}}</p>
 	<p>Correct guesses on others: {{correct_guesses_on_others}}</p>
 	<p>Correct guesses from others: {{correct_guesses_from_others}}</p>
-	{{#if profilePicturePath}}
-	<img class="profile-picture" src="assets/images/profile-pictures/{{profilePicturePath}}">
-	{{else}}
-	<img class="profile-picture" src="assets/images/user.jpg">
-	{{/if}}
+	<img class="profile-picture" src="assets/images/{{profilePicturePath}}">
 	<form method="POST" action="upload-profile-picture" enctype="multipart/form-data">
 		<label  for="profile-picture">Choose profile picture</label>
 		<input name="profile-picture" type="file">
-		<input type="submit" value="Upload">
+		<input name="upload" type="submit" value="Upload">
+		<input name="remove" type="submit" value="Remove">
 	</form>
 	<a href="/sign-out">
 		<button class="error">

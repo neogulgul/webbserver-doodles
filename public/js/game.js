@@ -317,20 +317,30 @@ socket.on("game-already-playing", () => {
 	window.location.href = "/already-playing"
 })
 
-socket.on("game-lobby-change", (game) => {
+socket.on("game-lobby-change", (players) => {
 	playerList.innerHTML = ""
-	let i = 0
-	Object.keys(game.lobby).forEach((key) => {
-		i++
-		const name = game.lobby[key].name
-		const id = game.lobby[key].id
-		if (key === socket.id) {
-			playerList.innerHTML += `<li class="you">#${id} ${name} (you)</li>`
+
+	Object.keys(players).forEach((socketId) => {
+		const player = players[socketId]
+
+		if (socketId === socket.id) {
+			playerList.innerHTML += `
+			<li>
+				<img class="profile-picture" src="assets/images/${player.profilePicturePath}">
+				<p class="you">${player.idNameString} (you)</p>
+			</li>
+			`
 		} else {
-			playerList.innerHTML += `<li>#${id} ${name}</li>`
+			playerList.innerHTML += `
+			<li>
+				<img class="profile-picture" src="assets/images/${player.profilePicturePath}">
+				<p>${player.idNameString}</p>
+			</li>
+			`
 		}
 	})
-	playerCount.innerHTML = "Players: " + i
+
+	playerCount.innerHTML = "Players: " + Object.keys(players).length
 })
 
 socket.on("game-player-message", (senderSocketId, id, name, message) => {

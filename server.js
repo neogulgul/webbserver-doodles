@@ -11,7 +11,6 @@ const { Server }   = require("socket.io")
 // services
 const db           = require("./services/db")
 const jwt          = require("./services/jwt")
-const { decode } = require("punycode")
 
 function random(min, max) { return Math.floor(Math.random() * (max + 1 - min)) + min }
 
@@ -21,8 +20,15 @@ function hash(data) {
 	return hash.digest("hex")
 }
 
+function sendError(res, status, errorMessage) {
+	res.status(status).render("error", {
+		title: "Error",
+		error: errorMessage
+	})
+}
+
 function databaseError(res) {
-	res.status(503).render("error", { error: "Error connecting to database." })
+	sendError(res, 503, "Error connecting to database.")
 }
 
 function bytesToMegabytes(bytes) {
@@ -50,14 +56,41 @@ function validateSignUpInput(input) {
 }
 
 function makingSureProfilePicturesDirectoryExists() {
-	if (fs.existsSync(profilePicturesDirectory)) {
-		if (!fs.statSync(profilePicturesDirectory).isDirectory()) {
-			fs.unlinkSync(profilePicturesDirectory)
-			fs.mkdirSync(profilePicturesDirectory)
+	if (fs.existsSync(profilePicturesDirectoryPath)) {
+		if (!fs.statSync(profilePicturesDirectoryPath).isDirectory()) {
+			fs.unlinkSync(profilePicturesDirectoryPath)
+			fs.mkdirSync(profilePicturesDirectoryPath)
 		}
 	} else {
-		fs.mkdirSync(profilePicturesDirectory)
+		fs.mkdirSync(profilePicturesDirectoryPath)
 	}
+}
+
+function removeProfilePicture(username) {
+	makingSureProfilePicturesDirectoryExists()
+
+	fs.readdirSync(profilePicturesDirectoryPath).forEach((file) => {
+		const name = file.split(".")[0]
+		if (name === username) {
+			fs.unlinkSync(profilePicturesDirectoryPath + file)
+		}
+	})
+}
+
+function getProfilePicturePath(username) {
+	makingSureProfilePicturesDirectoryExists()
+
+	let path = "user.jpg"
+
+	fs.readdirSync(profilePicturesDirectoryPath).forEach((file) => {
+		const name = file.split(".")[0]
+		if (name === username) {
+			path = "profile-pictures/" + file
+			return
+		}
+	})
+
+	return path
 }
 
 const allowedSignUpInputCharacters = {
@@ -75,7 +108,7 @@ const allowedSignUpInputCharacters = {
 
 const profilePicturesAllowedFormats = ["jpg", "jpeg", "png", "gif"]
 const profilePicturesMaxFilesize = 5 // MB
-const profilePicturesDirectory = __dirname + "/public/assets/images/profile-pictures/"
+const profilePicturesDirectoryPath = __dirname + "/public/assets/images/profile-pictures/"
 
 const tokenSecret = hash("ʕ •ᴥ•ʔ")
 
@@ -98,8 +131,9 @@ app.engine("handlebars", handlebars.engine({
 
 app.get("/", async (req, res) => {
 	let username = undefined
+	const ip = req.socket.remoteAddress
 	const token = req.cookies["token"]
-	const decodedToken = await jwt.verifyToken(token, tokenSecret)
+	const decodedToken = await jwt.verifyToken(ip, token, tokenSecret)
 	const validToken = decodedToken !== false
 	if (validToken) { username = decodedToken.username }
 
@@ -185,18 +219,18 @@ app.post("/sign-up", async (req, res) => {
 	const validPassword = validateSignUpInput(password)
 
 	if (!validUsername || !validPassword) {
-		let errorText = "You username and password are only allowed to contain the following characters: "
+		let errorMessage = "You username and password are only allowed to contain the following characters: "
 		let firstCharacter = true
 		Object.keys(allowedSignUpInputCharacters).forEach((key) => {
 			const characterArray = allowedSignUpInputCharacters[key]
 			characterArray.forEach((character) => {
-				firstCharacter ? errorText += character : errorText += ", " + character
+				firstCharacter ? errorMessage += character : errorMessage += ", " + character
 
 				if (firstCharacter) { firstCharacter = false }
 			})
 		})
 
-		res.status(400).render("error", { error: errorText })
+		sendError(res, 400, errorMessage)
 		return
 	}
 
@@ -247,8 +281,9 @@ app.get("/already-playing", (req, res) => {
 })
 
 app.get("/profile", async (req, res) => {
+	const ip = req.socket.remoteAddress
 	const token = req.cookies["token"]
-	const decodedToken = await jwt.verifyToken(token, tokenSecret)
+	const decodedToken = await jwt.verifyToken(ip, token, tokenSecret)
 	const validToken = decodedToken !== false
 
 	let username                    = undefined
@@ -257,7 +292,7 @@ app.get("/profile", async (req, res) => {
 	let correct_guesses_on_others   = undefined
 	let correct_guesses_from_others = undefined
 
-	let profilePicturePath = false
+	let profilePicturePath = ""
 
 	if (validToken) {
 		username = decodedToken.username
@@ -278,14 +313,7 @@ app.get("/profile", async (req, res) => {
 		correct_guesses_on_others   = result[0].correct_guesses_on_others
 		correct_guesses_from_others = result[0].correct_guesses_from_others
 
-		makingSureProfilePicturesDirectoryExists()
-
-		fs.readdirSync(profilePicturesDirectory).forEach((file) => {
-			const name = file.split(".")[0]
-			if (name === decodedToken.username) {
-				profilePicturePath = file
-			}
-		})
+		profilePicturePath = getProfilePicturePath(username)
 	}
 
 	res.render("profile", {
@@ -303,12 +331,11 @@ app.get("/profile", async (req, res) => {
 })
 
 app.post("/upload-profile-picture", async (req, res) => {
+	const ip = req.socket.remoteAddress
 	const token = req.cookies["token"]
-	const decodedToken = await jwt.verifyToken(token, tokenSecret)
+	const decodedToken = await jwt.verifyToken(ip, token, tokenSecret)
 	const validToken = decodedToken !== false
-	if (!validToken) {
-		res.status(401).render("error", { error: "Unauthorized." })
-	}
+	if (!validToken) { sendError(res, 401, "Unauthorized.") }
 
 	const username = decodedToken.username
 
@@ -316,41 +343,50 @@ app.post("/upload-profile-picture", async (req, res) => {
 
 	form.parse(req, (error, fields, file) => {
 		if (error) { throw error }
-		const tmpPath  = file["profile-picture"].filepath
-		const filename = file["profile-picture"].originalFilename
-		const filesize = file["profile-picture"].size
 
-		const format = filename.split(".")[1]
+		const upload = fields.upload === "Upload"
+		const remove = fields.remove === "Remove"
 
-		if (!profilePicturesAllowedFormats.includes(format)) {
-			let allowedFormatString = ""
-			for (let i = 0; i < profilePicturesAllowedFormats.length; i++) {
-				allowedFormatString += profilePicturesAllowedFormats[i]
-				if (i < profilePicturesAllowedFormats.length - 1) {
-					allowedFormatString += ", "
+		if (upload) {
+			const tmpPath  = file["profile-picture"].filepath
+			const filename = file["profile-picture"].originalFilename
+			const filesize = file["profile-picture"].size
+
+			if (filename === "") {
+				sendError(res, 400, "You didn't choose a file :|")
+				return
+			}
+	
+			const format = filename.split(".")[1]
+	
+			if (!profilePicturesAllowedFormats.includes(format)) {
+				let allowedFormatString = ""
+				for (let i = 0; i < profilePicturesAllowedFormats.length; i++) {
+					allowedFormatString += profilePicturesAllowedFormats[i]
+					if (i < profilePicturesAllowedFormats.length - 1) {
+						allowedFormatString += ", "
+					}
 				}
+				sendError(res, 400, "File in wrong format. Your profile picture must be in one of these formats: " + allowedFormatString + ".")
+				return
 			}
-			res.status(400).render("error", { error: "File in wrong format. Your profile picture must be in one of these formats: " + allowedFormatString + "."})
-			return
-		}
-
-		if (bytesToMegabytes(filesize) > profilePicturesMaxFilesize) {
-			res.status(400).render("error", { error: "File too large. Files must be under 5 MB." })
-			return
-		}
-
-		makingSureProfilePicturesDirectoryExists()
-
-		fs.readdirSync(profilePicturesDirectory).forEach((file) => {
-			const name = file.split(".")[0]
-			if (name === username) {
-				fs.unlinkSync(profilePicturesDirectory + file)
+	
+			if (bytesToMegabytes(filesize) > profilePicturesMaxFilesize) {
+				sendError(res, 400, "File too large. Files must be under 5 MB.")
+				return
 			}
-		})
-
-		const newPath = profilePicturesDirectory + username + "." + format
-		fs.writeFileSync(newPath, fs.readFileSync(tmpPath))
-		res.redirect("/profile")
+	
+			removeProfilePicture(username)
+	
+			const newPath = profilePicturesDirectoryPath + username + "." + format
+			fs.writeFileSync(newPath, fs.readFileSync(tmpPath))
+			res.redirect("/profile")
+		} else if (remove) {
+			removeProfilePicture(username)
+			res.redirect("/profile")
+		} else {
+			sendError(res, 400, "This shouldn't happen :|")
+		}
 	})
 })
 
@@ -362,12 +398,17 @@ app.get("/sign-out", (req, res) => {
 app.get("/stats", async (req, res) => {
 	const sql = `
 	SELECT
-		username, games_played, correct_guesses_on_others, correct_guesses_from_others
+		username, sign_up_date, games_played, correct_guesses_on_others, correct_guesses_from_others
 	FROM
 		users
 	`
 	const result = await db.execute(sql)
 	if (!result) { databaseError(res); return }
+
+	result.forEach((user) => {
+		user.sign_up_date       = user.sign_up_date.toDateString()
+		user.profilePicturePath = getProfilePicturePath(user.username)
+	})
 
 	res.render("stats", {
 		title: "stats",
@@ -411,19 +452,42 @@ const game = {
 		const playingBefore = game.playing
 		game.playing = game.getValidPlayingPlayerCount()
 
-		if (!game.playing && playingBefore) { await game.endRound() }
+		if (!game.playing && playingBefore) {
+			console.log("[Game]: Ending round because of too few players.")
+			await game.endRound()
+		}
 
 		if (game.playing && !playingBefore) { game.startRound() }
 	},
 
 	updateLobby: (io) => {
 		game.updatePlayingStatus()
-		io.in("game").emit("game-lobby-change", game)
+
+		const players = {}
+		game.getPlayers().forEach((socketId) => {
+			const player = game.lobby[socketId]
+
+			let profilePicturePath = "user.jpg"
+			if (!player.guest) {
+				profilePicturePath = getProfilePicturePath(player.name)
+			}
+
+			players[socketId] = {
+				idNameString: game.getPlayerIdNameString(socketId),
+				profilePicturePath: profilePicturePath
+			}
+		})
+
+		io.in("game").emit("game-lobby-change", players)
+	},
+
+	existsInLobby: (socketId) => {
+		return game.lobby[socketId] !== undefined
 	},
 
 	getPlayerIdNameString: (socketId) => {
+		if (!game.existsInLobby(socketId)) { return "NOT DEFINED" }
 		const player = game.lobby[socketId]
-		if (!player) { return "NOT DEFINED" }
 		return `#${player.id} ${player.name}`
 	},
 
@@ -443,12 +507,14 @@ const game = {
 	},
 
 	startRound: () => {
+		console.log("[Game]: Round started")
 		const words = JSON.parse(fs.readFileSync("words.json", "utf-8"))
 		const index = random(0, words.length - 1)
 		game.word = words[index]
 
 		game.drawer = game.playerDrawQueue[0]
 		game.playerDrawQueue.shift()
+
 		io.in("game").emit("game-round-start", game.drawer)
 		io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(game.drawer)} is drawing.`)
 
@@ -460,10 +526,14 @@ const game = {
 	},
 
 	endRound: async () => {
+		if (game.existsInLobby(game.drawer)) {
+			io.in("game").emit("game-server-message", `The word that ${game.getPlayerIdNameString(game.drawer)} had was "${game.word}".`)
+		}
+
 		await game.updatePlayerProfiles()
 
 		game.playing = false
-		if (game.drawer) {
+		if (game.existsInLobby(game.drawer)) {
 			game.playerDrawQueue.push(game.drawer)
 		}
 		game.roundStartTime = undefined
@@ -478,6 +548,8 @@ const game = {
 	},
 
 	validatePlayersCorrectness: async () => {
+		if (game.correctPlayers.length === 0) { return }
+
 		let everyPlayerIsCorrect = true
 
 		const players = game.getPlayers()
@@ -492,12 +564,13 @@ const game = {
 		}
 
 		if (everyPlayerIsCorrect) {
+			console.log("[Game]: Ending round because every player is correct.")
 			await game.endRound()
 		}
 	},
 
 	updatePlayerProfiles: async () => {
-		const players = Object.keys(game.lobby)
+		const players = game.getPlayers()
 
 		for (let i = 0; i < players.length; i++) {
 			const socketId = players[i]
@@ -514,7 +587,7 @@ const game = {
 					username = ?
 				`, [player.name])
 				let result = await db.execute(sql)
-				if (!result) { console.log("Database error.") }
+				if (!result) { console.log("[Game]: Database error.") }
 
 				const id                        = result[0].id
 				let games_played                = result[0].games_played
@@ -538,7 +611,7 @@ const game = {
 					id = ?
 				`, [games_played, correct_guesses_on_others, correct_guesses_from_others, id])
 				result = await db.execute(sql)
-				if (!result) { console.log("Database error.") }
+				if (!result) { console.log("[Game]: Database error.") }
 			}
 		}
 	}
@@ -547,15 +620,20 @@ const game = {
 io.on("connection", (socket) => {
 	socket.on("disconnect", async () => {
 		if (game.getPlayers().includes(socket.id)) {
-			socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just left.`)
-
-			if (socket.id === game.drawer) {
-				await game.endRound()
-			}
+			console.log(`[Game]: ${game.getPlayerIdNameString(socket.id)} (${socket.id}) left.`)
+			socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} left.`)
 
 			delete game.lobby[socket.id]
 			const playerDrawQueueIndex = game.playerDrawQueue.indexOf(socket.id)
-			game.playerDrawQueue.splice(playerDrawQueueIndex, 1)
+			if (playerDrawQueueIndex !== -1) {
+				game.playerDrawQueue.splice(playerDrawQueueIndex, 1)
+			}
+
+			if (socket.id === game.drawer) {
+				console.log("[Game]: Ending round because of drawer leaving.")
+				await game.endRound()
+			}
+
 			game.updateLobby(io)
 
 			game.validatePlayersCorrectness()
@@ -563,7 +641,8 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("game-join", async (token) => {
-		const decodedToken = await jwt.verifyToken(token, tokenSecret)
+		const ip = socket.handshake.address
+		const decodedToken = await jwt.verifyToken(ip, token, tokenSecret)
 
 		const username = decodedToken.username
 
@@ -589,7 +668,8 @@ io.on("connection", (socket) => {
 			game.addToLobby(socket.id, username)
 		}
 
-		socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} just joined.`)
+		console.log(`[Game]: ${game.getPlayerIdNameString(socket.id)} (${socket.id}) joined.`)
+		socket.to("game").emit("game-server-message", `${game.getPlayerIdNameString(socket.id)} joined.`)
 		socket.join("game")
 		game.playerDrawQueue.push(socket.id)
 		game.updateLobby(io)
@@ -640,7 +720,8 @@ io.on("connection", (socket) => {
 		const   id = game.lobby[senderSocketId].id
 		const name = game.lobby[senderSocketId].name
 
-		if (senderSocketId !== game.drawer && message === game.word) {
+		// correct guess
+		if (senderSocketId !== game.drawer && message.toLowerCase() === game.word.toLowerCase()) {
 			game.correctPlayers.push(senderSocketId)
 			io.in("game").emit("game-server-message", `${game.getPlayerIdNameString(senderSocketId)} guessed correctly.`)
 			socket.emit("game-set-status", game.getStatusMessage("correct"))
@@ -663,6 +744,7 @@ setInterval(async () => {
 		const timerPercentage = 100 * secondsSinceRoundStart / game.secondsPerRound
 		io.in("game").emit("game-update-timer", timerPercentage)
 		if (timerPercentage >= 100) {
+			console.log("[Game]: Ending round because time is over.")
 			await game.endRound()
 		}
 	}

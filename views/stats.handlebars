@@ -3,7 +3,9 @@
 	<table>
 		<thead>
 			<tr>
+				<th></th>
 				<th>Username</th>
+				<th>Sign up date</th>
 				<th>Games played</th>
 				<th>Correct guesses on others</th>
 				<th>Correct guesses from others</th>
@@ -12,7 +14,9 @@
 		<tbody>
 			{{#each stats}}
 			<tr>
+				<td><img class="profile-picture" src="assets/images/{{this.profilePicturePath}}"></td>
 				<td>{{this.username}}</td>
+				<td>{{this.sign_up_date}}</td>
 				<td>{{this.games_played}}</td>
 				<td>{{this.correct_guesses_on_others}}</td>
 				<td>{{this.correct_guesses_from_others}}</td>

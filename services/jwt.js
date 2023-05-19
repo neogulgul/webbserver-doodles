@@ -9,8 +9,8 @@ function setToken(res, id, username, tokenSecret, tokenHours = 24) {
 	res.cookie("token", token)
 }
 
-async function verifyToken(token, tokenSecret) {
-	if (token === undefined) { return false }
+async function verifyToken(ip, token, tokenSecret) {
+	if (!token) { return false }
 
 	try {
 		const decoded = jwt.verify(token, tokenSecret)
@@ -24,7 +24,7 @@ async function verifyToken(token, tokenSecret) {
 		if (valid) { return decoded }
 	} catch (error) {
 		// console.log(error)
-		console.log("Token was invalid.")
+		console.log(`${ip} had an invalid token.`)
 	}
 
 	return false

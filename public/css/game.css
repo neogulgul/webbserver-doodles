@@ -224,23 +224,32 @@ main {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ui-spacing);
+	max-width: 100%;
 	max-height: var(--canvas-size);
 	padding: var(--ui-spacing);
-	overflow-y: scroll;
+	overflow: scroll;
 }
 
 #player-list {
+	width: fit-content;
 	border: 2px solid var(--outline);
 	list-style: none;
 }
 
 #player-list li {
-	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: var(--ui-spacing);
+	width: fit-content;
 	padding: var(--ui-spacing);
 }
 
 #player-list li:nth-child(odd) {
 	background-color: var(--outline);
+}
+
+#player-list li p {
+	white-space: nowrap;
 }
 
 /* ==================================================
