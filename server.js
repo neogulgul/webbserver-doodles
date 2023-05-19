@@ -411,7 +411,7 @@ app.get("/stats", async (req, res) => {
 	})
 
 	res.render("stats", {
-		title: "stats",
+		title: "Stats",
 		css: ["stats"],
 		nav: true,
 		stats: result
