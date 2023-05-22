@@ -227,7 +227,7 @@ main {
 	max-width: 100%;
 	max-height: var(--canvas-size);
 	padding: var(--ui-spacing);
-	overflow: scroll;
+	overflow: auto;
 }
 
 #player-list {
@@ -240,7 +240,7 @@ main {
 	display: flex;
 	align-items: center;
 	gap: var(--ui-spacing);
-	width: fit-content;
+	width: 100%;
 	padding: var(--ui-spacing);
 }
 
@@ -269,7 +269,7 @@ main {
 #messages {
 	height: 100%;
 	border: 2px solid var(--outline);
-	overflow-y: scroll;
+	overflow-y: auto;
 	list-style: none;
 	scroll-behavior: smooth;
 }
